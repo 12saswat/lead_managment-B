@@ -44,5 +44,13 @@ try {
   console.log("File: app.js", "Line 44:", error);
   throw new Error("Error Occured in Routes", error);
 }
+// Import Manager Routes and State it's Functions in Try Catch Block
+import managerRouter from "./routes/manager.routes.js";
+try {
+  app.use("/api/v1/manager", managerRouter);
+} catch (error) {
+  console.log("File: app.js", 'Line 52:', error);;
+  throw new Error("Error occurred in manager routes", { cause: error });
+}
 
 export default app;

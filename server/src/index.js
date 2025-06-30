@@ -12,8 +12,8 @@ dotenv.config({
 const serverPort = process.env.PORT || 8080;
 
 connectDB()
-  .then(() => {
-    server.on("error", () => {
+  .then(() => {      
+    server.on("error", (error) => {           // Fixed error logger
       console.log("Error Occured at index.js", error);
     });
 
