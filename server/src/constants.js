@@ -1,1 +1,1 @@
-export const DBName = 'Lead-Management'  
+export const DBName = "LeadManagement";
