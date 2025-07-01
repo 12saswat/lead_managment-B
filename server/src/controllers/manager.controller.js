@@ -1,7 +1,6 @@
 import { Manager } from "../models/manager.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-// import { JWT_SECRET } from "../constants.js";
 
 export const loginManager = async (req, res) => {
   const { email, password } = req.body;
@@ -17,13 +16,20 @@ export const loginManager = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
-      { id: manager._id, role: "manager" },
-      JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const token = manager.generateAccessToken();
 
-    res.status(200).json({ token, manager });
+    res.status(200).json({
+    success: true,
+    message: "Login successful",
+    token,
+    manager: {
+    id: manager._id,
+    name: manager.name,
+    email: manager.email,
+    role: manager.role,
+    createdAt: manager.createdAt,
+  },
+});
   } catch (error) {
     console.error("Error in loginManager:", error);
     res.status(500).json({ message: "Login failed", error: error.message });
