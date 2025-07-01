@@ -52,5 +52,14 @@ try {
   console.log("File: app.js", 'Line 52:', error);;
   throw new Error("Error occurred in manager routes", { cause: error });
 }
+// Import manager Seed Routes and State it's Functions in Try Catch Block
+import seedRoutes from "./routes/manager.seed.routes.js";
+try{
+  app.use("/api/v1/seed", seedRoutes);
+} catch (error) {
+  console.log("File: app.js", "Line 60:", error);
+  throw new Error("Error occurred in seed routes", { cause: error });
+}
+
 
 export default app;
