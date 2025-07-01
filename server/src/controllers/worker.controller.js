@@ -1,6 +1,7 @@
 import { Worker } from "../models/worker.models.js";
+import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 
-const registerWroker = async (req, res) => {
+const registerWorker = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -65,12 +66,17 @@ const loginWorker = async (req, res) => {
     }
 
     const token = user.generateAccessToken();
-    return res.status(200).cookie("token", token).json({
+
+    // Generate a JWT token containing the user's role
+    const roleToken = generateRoleToken("worker");
+
+    // Generate a randomized cookie key (prefixed with '001') for storing the role token
+    const key = generateEncryptedKey();
+
+    return res.status(200).cookie("token", token).cookie(key, roleToken).json({
       message: "Login Successfull",
       success: true,
       statusCode: 200,
-      user,
-      token,
     });
   } catch (error) {
     console.log(error);
@@ -82,4 +88,4 @@ const loginWorker = async (req, res) => {
   }
 };
 
-export { registerWroker, loginWorker };
+export { registerWorker, loginWorker };
