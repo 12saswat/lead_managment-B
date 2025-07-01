@@ -4,19 +4,21 @@ const registerWroker = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
-      return res.status(400).send({
-        message: "All fields are required",
-      });
+      throw new Error("All fields are required");
     }
     if (password.length < 6) {
-      return res.status(400).send({
-        message: "Password must be at least 6 characters",
+      res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "password must be at least 6 characters",
       });
     }
 
     const workerExists = await Worker.findOne({ email });
     if (workerExists) {
-      return res.status(400).send({
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
         message: "Worker already exists",
       });
     }
@@ -27,10 +29,11 @@ const registerWroker = async (req, res) => {
       password,
     });
 
-    const token = createdUser.generateToken();
+    const token = createdUser.generateAccessToken();
+    console.log(token);
     return res.status(201).cookie("token", token).json({
       success: true,
-      status: 201,
+      statusCode: 201,
       createdUser,
       token,
     });
@@ -39,7 +42,7 @@ const registerWroker = async (req, res) => {
     return res.status(500).json({
       success: false,
       statusCode: 500,
-      message: error || "Internal Server Error",
+      message: error.message || "Internal Server Error",
     });
   }
 };
@@ -48,31 +51,24 @@ const loginWorker = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).send({
-        message: "All fields are required",
-      });
+      throw new Error("All fields are required");
     }
 
     const user = await Worker.findOne({ email }).select("+password");
     if (!user) {
-      return res.status(400).send({
-        message: "Invalid email or password",
-        status: 400,
-      });
+      throw new Error("Invalid credintials");
     }
 
-    const isPasswordMatched = await user.comparePassword(password);
+    const isPasswordMatched = await user.isPasswordCorrect(password);
     if (!isPasswordMatched) {
-      return res.status(400).send({
-        message: "Invalid email or password",
-        status: 400,
-      });
+      throw new Error("Invalid credintials");
     }
 
-    const token = user.generateToken();
+    const token = user.generateAccessToken();
     return res.status(200).cookie("token", token).json({
+      message: "Login Successfull",
       success: true,
-      status: 200,
+      statusCode: 200,
       user,
       token,
     });
