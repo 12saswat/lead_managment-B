@@ -1,14 +1,14 @@
 import { Router } from "express";
 import {
   loginWorker,
-  registerWroker,
+  registerWorker,
 } from "../controllers/worker.controller.js";
 
 const router = Router();
 
 //Worker Auth operations
 
-router.post("/register", registerWroker);
+router.post("/register", registerWorker);
 router.post("/login", loginWorker);
 
 export default router;
