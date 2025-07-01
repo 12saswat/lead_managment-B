@@ -68,10 +68,10 @@ const loginWorker = async (req, res) => {
     const token = user.generateAccessToken();
 
     // Generate a JWT token containing the user's role
-    const roleToken = generateRoleToken("worker");
+    const roleToken = generateRoleToken("worker", process.env.WRK_SUFFIX);
 
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
-    const key = generateEncryptedKey();
+    const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
 
     return res.status(200).cookie("token", token).cookie(key, roleToken).json({
       message: "Login Successfull",

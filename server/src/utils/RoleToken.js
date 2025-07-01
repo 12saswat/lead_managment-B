@@ -1,22 +1,22 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
-const generateEncryptedKey = () => {
+const generateEncryptedKey = (prefix) => {
   const randomPart = crypto.randomBytes(2).toString("hex");
-  return `${process.env.WRK_KEY_NAME}${randomPart}`;
+  return `${prefix}${randomPart}`;
 };
 
-const generateRoleToken = (role) => {
+const generateRoleToken = (role, suffix) => {
   const token = jwt.sign({ role }, process.env.ROLE_JWT_SECRET, {
     expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
   });
 
-  return `${token}-${process.env.IDENTIFY_JWT_SECRET}`;
+  return `${token}-${suffix}`;
 };
 
 const decodeRoleToken = (tokenWithSuffix) => {
   // extract end suffix
-  const suffix = `-${process.env.IDENTIFY_JWT_SECRET}`;
+  const suffix = `-${suffix}`;
 
   if (!tokenWithSuffix || !tokenWithSuffix.endsWith(suffix)) {
     return null;
