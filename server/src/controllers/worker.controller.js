@@ -31,7 +31,7 @@ const registerWorker = async (req, res) => {
     });
 
     const token = createdUser.generateAccessToken();
-    console.log(token);
+
     return res.status(201).cookie("token", token).json({
       success: true,
       statusCode: 201,
