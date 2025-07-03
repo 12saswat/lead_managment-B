@@ -21,7 +21,16 @@ const workerSchema = new Schema(
       required: [true, "Password is Required"],
       select: false,
     },
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
+    },
   },
+
   {
     timestamps: true,
   }
