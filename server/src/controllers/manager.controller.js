@@ -5,6 +5,7 @@ import {generateEncryptedKey,generateRoleToken,} from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
 import generateOtp from "../utils/generateOtp.js";
 
+
  const loginManager = async (req, res) => {
   const { email, password } = req.body;
 
@@ -21,28 +22,39 @@ import generateOtp from "../utils/generateOtp.js";
 
     const token = manager.generateAccessToken();
 
- // Generate a JWT token containing the manger's role
+    // Generate a JWT token containing the manger's role
     const roleToken = generateRoleToken("manager", process.env.MAN_SUFFIX);
 
-  // Generate a randomized cookie key (prefixed with '002') for storing the role token
-  const key = generateEncryptedKey(process.env.MAN_KEY_NAME); // '002'
+    // Generate a randomized cookie key (prefixed with '002') for storing the role token
+    const key = generateEncryptedKey(process.env.MAN_KEY_NAME); // '002'
 
-     // Set cookies (can add httpOnly, secure, sameSite as needed)
+
+    //Cookie Options 
+     const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV == 'development' ? false : true,
+            domain: process.env.NODE_ENV == 'development' ? "localhost" : "ipr-01250601001-f.vercel.app",
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        }
+
+    // Set cookies (can add httpOnly, secure, sameSite as needed)
     return res
       .status(200)
-      .cookie("token", token)
-      .cookie(key, roleToken)
+      .cookie("token", token,cookieOptions)
+      .cookie(key, roleToken,cookieOptions)
       .json({
-       success: true,
-    message: "Login successful",
-    token,
-    manager: {
-    id: manager._id,
-    name: manager.name,
-    email: manager.email,
-    role: manager.role,
-    createdAt: manager.createdAt,
-      }, });
+        success: true,
+        message: "Login successful",
+        token,
+        manager: {
+          id: manager._id,
+          name: manager.name,
+          email: manager.email,
+          role: manager.role,
+          createdAt: manager.createdAt,
+        },
+      });
   } catch (error) {
     console.error("Error in loginManager:", error);
     res.status(500).json({ message: "Login failed", error: error.message });
