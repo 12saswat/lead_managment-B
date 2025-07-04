@@ -30,7 +30,7 @@ export const loginManager = async (req, res) => {
      const cookieOptions = {
             httpOnly: true,
             secure: process.env.NODE_ENV == 'development' ? false : true,
-            domain: process.env.NODE_ENV == 'development' ? "localhost" : ".vercel.app",
+            domain: process.env.NODE_ENV == 'development' ? "localhost" : "ipr-01250601001-f.vercel.app",
             sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         }
