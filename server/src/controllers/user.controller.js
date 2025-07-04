@@ -5,6 +5,7 @@ import { APIresponse } from "../utils/APIresponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { v4 as uuid } from "uuid";
+import { Token } from "../models/tokens.model.js";
 
 const generateAccessTokenInstance = async (userId) => {
   try {
