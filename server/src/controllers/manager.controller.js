@@ -5,6 +5,7 @@ import {generateEncryptedKey,generateRoleToken,} from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
 import generateOtp from "../utils/generateOtp.js";
 
+
  const loginManager = async (req, res) => {
   const { email, password } = req.body;
 
