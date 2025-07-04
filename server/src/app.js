@@ -7,10 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "developement"
-        ? "http://localhost:3000"
-        : "https://ipr-01250601001-f.vercel.app",
+    origin:"https://ipr-01250601001-f.vercel.app",
     credentials: true,
   })
 );
