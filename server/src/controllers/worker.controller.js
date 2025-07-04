@@ -249,7 +249,7 @@ const resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      res.status(400).json({
+      return res.status(400).json({    //  <-- return was missing here
         success: false,
         message: "password must be at least 6 characters",
       });
