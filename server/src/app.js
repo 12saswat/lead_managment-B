@@ -8,9 +8,9 @@ const app = express();
 app.use(
   cors({
     origin:
-      process.env.NODE_ENV === "production"
-        ? "your link goes here"
-        : "http://localhost:3000",
+      process.env.NODE_ENV === "developement"
+        ? "http://localhost:3000"
+        : "https://ipr-01250601001-f.vercel.app/",
     credentials: true,
   })
 );
