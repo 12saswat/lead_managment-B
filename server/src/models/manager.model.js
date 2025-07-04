@@ -23,8 +23,17 @@ const managerSchema = new Schema(
     },
     role: {
        type: String,
-       default: "manager"
-}
+       default: "manager",
+       
+    },
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
