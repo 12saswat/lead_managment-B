@@ -10,7 +10,7 @@ app.use(
     origin:
       process.env.NODE_ENV === "developement"
         ? "http://localhost:3000"
-        : "https://ipr-01250601001-f.vercel.app/",
+        : "https://ipr-01250601001-f.vercel.app",
     credentials: true,
   })
 );
