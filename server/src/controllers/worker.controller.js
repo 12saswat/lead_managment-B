@@ -196,8 +196,8 @@ const verifyOtp = async (req, res) => {
     }
 
     const userId = req.params.id;
+    console.log("THis is userID>>",userId)
     const user = await Worker.findById(userId);
-
     if (!user || !user.otp || !user.otpExpiry) {
       return res.status(400).json({
         success: false,
