@@ -94,7 +94,7 @@ const sendOTP = async (req, res) => {
       success: true,
       response: {
         message: "OTP sent successfully",
-         otp: otp,                    // Optional: Include OTP in response for testing purposes
+         //otp: otp,                    // Optional: Include OTP in response for testing purposes
       },
       data: {
         managerId: manager._id,

@@ -60,5 +60,12 @@ try {
   console.log("File: app.js", "Line 60:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
+import leadRouter from "./routes/lead.routes.js";
+try {
+  app.use("/api/v1/lead", leadRouter);
+} catch (error) {
+  console.log("File: app.js", "Line 67:", error);
+  throw new Error("Error occurred in seed routes", { cause: error });
+}
 
 export default app;
