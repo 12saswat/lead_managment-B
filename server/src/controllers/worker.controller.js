@@ -100,10 +100,17 @@ const loginWorker = async (req, res) => {
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
 
+    const cookiesOption = {
+      sameSite : 'strict',
+      httpOnly:true,
+      domain : ".vercel.app",
+      secure:true
+    }
+
     return res
       .status(200)
-      .cookie("token", token)
-      .cookie(key, roleToken)
+      .cookie("token", token,cookiesOption)
+      .cookie(key, roleToken,cookiesOption)
       .json({
         success: true,
         response: {
@@ -249,7 +256,7 @@ const resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      res.status(400).json({
+      return res.status(400).json({    //  <-- return was missing here
         success: false,
         message: "password must be at least 6 characters",
       });

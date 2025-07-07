@@ -8,9 +8,9 @@ const app = express();
 app.use(
   cors({
     origin:
-      process.env.NODE_ENV === "developement"
-        ? "http://localhost:3000"
-        : "https://ipr-01250601001-f.vercel.app/",
+      process.env.NODE_ENV === "production"
+        ? "your link goes here"
+        : "http://localhost:3000",
     credentials: true,
   })
 );
@@ -58,6 +58,13 @@ try {
   app.use("/api/v1/seed", seedRoutes);
 } catch (error) {
   console.log("File: app.js", "Line 60:", error);
+  throw new Error("Error occurred in seed routes", { cause: error });
+}
+import leadRouter from "./routes/lead.routes.js";
+try {
+  app.use("/api/v1/lead", leadRouter);
+} catch (error) {
+  console.log("File: app.js", "Line 67:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
 
