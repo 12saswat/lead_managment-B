@@ -2,7 +2,6 @@ import { Worker } from "../models/worker.models.js";
 import generateOtp from "../utils/generateOtp.js";
 import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
-import { error } from "console";
 
 const registerWorker = async (req, res) => {
   try {
@@ -149,7 +148,9 @@ const sendOtp = async (req, res) => {
     worker.otpExpiry = expiry;
     await worker.save();
 
-    const linkUrl = `${process.env.CLIENT_URL}/reset-password/${worker._id}`;
+    // Create a link for password reset
+    // Ensure CLIENT_URL is defined in your environment variables
+    const linkUrl = `${process.env.CLIENT_URL}/worker/auth/reset-password/${worker._id}`;
 
     // Email content
     // Use a template literal to create the HTML content
@@ -221,9 +222,7 @@ const verifyOtp = async (req, res) => {
       response: {
         message: "OTP verified successfully",
       },
-      data: {
-        workerId: user,
-      },
+      data: null,
     });
   } catch (err) {
     console.error("Error verifying OTP:", err);
@@ -249,7 +248,8 @@ const resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({    //  <-- return was missing here
+      return res.status(400).json({
+        //  <-- return was missing here
         success: false,
         message: "password must be at least 6 characters",
       });
