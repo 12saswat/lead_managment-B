@@ -3,6 +3,8 @@ import generateOtp from "../utils/generateOtp.js";
 import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
 import { error } from "console";
+import dotenv from "dotenv";
+dotenv.config();
 
 const registerWorker = async (req, res) => {
   try {
@@ -99,9 +101,9 @@ const loginWorker = async (req, res) => {
 
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
-
+    console.log("This is key>>", process.env.NODE_ENV);
     const cookiesOption = {
-      sameSite : 'none',
+      sameSite : 'strict',
       httpOnly:true,
       secure:process.env.NODE_ENV == "development" ? false : true,
       path:"/",
