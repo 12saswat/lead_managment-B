@@ -102,11 +102,11 @@ const loginWorker = async (req, res) => {
 
     const cookiesOption = {
       sameSite : 'none',
-      httpOnly:false,
-      secure:true,
+      httpOnly:true,
+      secure:process.env.NODE_ENV == "development" ? false : true,
       path:"/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain:".indibus.net"
+      domain: process.env.NODE_ENV == "development" ? "localhost" : ".indibus.net",
     }
 
     return res
