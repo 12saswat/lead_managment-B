@@ -1,8 +1,9 @@
+
 import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
-const userSchema = new Schema(
+const managerSchema = new Schema(
   {
     email: {
       type: String,
@@ -11,22 +12,27 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    firstName: {
-      type: String,
-      lowercase: true,
-      trim: true,
-    },
-    lastName: {
-      type: String,
-      lowercase: true,
-      trim: true,
-    },
-    avatar: {
-      type: String,
-    },
-    password: {
+     password: {
       type: String,
       required: [true, "Password is Required"],
+    },
+    name: {
+      type: String,
+      lowercase: true,
+      trim: true,
+    },
+    role: {
+       type: String,
+       default: "manager",
+       
+    },
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
     },
   },
   {
@@ -34,25 +40,26 @@ const userSchema = new Schema(
   }
 );
 
-userSchema.pre("save", async function (next) {
+managerSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-userSchema.methods.isPasswordCorrect = async function (password) {
+managerSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.generateAccessToken = function () {
+managerSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
       email: this.email,
       name: this.name,
+      role: this.role,
     },
     process.env.ACCESS_TOKEN_SECRET
   );
 };
 
-export const User = mongoose.model("User", userSchema);
+export const Manager = mongoose.model("Manager", managerSchema);

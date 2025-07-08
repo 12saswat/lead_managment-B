@@ -2,8 +2,13 @@ import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
-const userSchema = new Schema(
+const workerSchema = new Schema(
   {
+    name: {
+      type: String,
+      lowercase: true,
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
@@ -11,40 +16,37 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    firstName: {
-      type: String,
-      lowercase: true,
-      trim: true,
-    },
-    lastName: {
-      type: String,
-      lowercase: true,
-      trim: true,
-    },
-    avatar: {
-      type: String,
-    },
     password: {
       type: String,
       required: [true, "Password is Required"],
+      select: false,
+    },
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: null,
     },
   },
+
   {
     timestamps: true,
   }
 );
 
-userSchema.pre("save", async function (next) {
+workerSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-userSchema.methods.isPasswordCorrect = async function (password) {
+workerSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-userSchema.methods.generateAccessToken = function () {
+workerSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
@@ -55,4 +57,4 @@ userSchema.methods.generateAccessToken = function () {
   );
 };
 
-export const User = mongoose.model("User", userSchema);
+export const Worker = mongoose.model("Worker", workerSchema);
