@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin:"https://ipr-01250601001-f.vercel.app",
+    origin:"https://lead.indibus.net",
     credentials: true,
   })
 );
