@@ -100,10 +100,19 @@ const loginWorker = async (req, res) => {
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
 
+    const cookiesOption = {
+      sameSite : 'none',
+      httpOnly:false,
+      secure:true,
+      path:"/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      domain:".indibus.net"
+    }
+
     return res
       .status(200)
-      .cookie("token", token)
-      .cookie(key, roleToken)
+      .cookie("token", token,cookiesOption)
+      .cookie(key, roleToken,cookiesOption)
       .json({
         success: true,
         response: {
