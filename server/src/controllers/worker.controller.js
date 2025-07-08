@@ -3,6 +3,8 @@ import generateOtp from "../utils/generateOtp.js";
 import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
 import { error } from "console";
+import dotenv from "dotenv";
+dotenv.config();
 
 const registerWorker = async (req, res) => {
   try {
@@ -99,11 +101,20 @@ const loginWorker = async (req, res) => {
 
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
+    console.log("This is key>>", process.env.NODE_ENV);
+    const cookiesOption = {
+      sameSite : 'strict',
+      httpOnly:true,
+      secure:process.env.NODE_ENV == "development" ? false : true,
+      path:"/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      domain: process.env.NODE_ENV == "development" ? "localhost" : ".indibus.net",
+    }
 
     return res
       .status(200)
-      .cookie("token", token)
-      .cookie(key, roleToken)
+      .cookie("token", token,cookiesOption)
+      .cookie(key, roleToken,cookiesOption)
       .json({
         success: true,
         response: {
@@ -196,8 +207,8 @@ const verifyOtp = async (req, res) => {
     }
 
     const userId = req.params.id;
+    console.log("THis is userID>>",userId)
     const user = await Worker.findById(userId);
-
     if (!user || !user.otp || !user.otpExpiry) {
       return res.status(400).json({
         success: false,
@@ -249,7 +260,7 @@ const resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      res.status(400).json({
+      return res.status(400).json({    //  <-- return was missing here
         success: false,
         message: "password must be at least 6 characters",
       });

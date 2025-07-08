@@ -2,15 +2,14 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-
+dotenv.config();
 const app = express();
+
+console.log("This is key1>>", process.env.NODE_ENV);
 
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "your link goes here"
-        : "http://localhost:3000",
+    origin:process.env.NODE_ENV == "development" ? "http://localhost:3000" : "https://lead.indibus.net",
     credentials: true,
   })
 );
@@ -58,6 +57,13 @@ try {
   app.use("/api/v1/seed", seedRoutes);
 } catch (error) {
   console.log("File: app.js", "Line 60:", error);
+  throw new Error("Error occurred in seed routes", { cause: error });
+}
+import leadRouter from "./routes/lead.routes.js";
+try {
+  app.use("/api/v1/lead", leadRouter);
+} catch (error) {
+  console.log("File: app.js", "Line 67:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
 
