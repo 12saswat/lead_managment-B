@@ -2,8 +2,10 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-
+dotenv.config();
 const app = express();
+
+console.log("This is key1>>", process.env.NODE_ENV);
 
 app.use(
   cors({
