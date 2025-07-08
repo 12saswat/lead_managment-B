@@ -102,7 +102,7 @@ const loginWorker = async (req, res) => {
 
     const cookiesOption = {
       sameSite : 'none',
-      httpOnly:true,
+      httpOnly:false,
       domain : ".vercel.app",
       secure:true,
       path:"/"
