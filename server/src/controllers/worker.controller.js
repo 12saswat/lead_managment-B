@@ -101,7 +101,7 @@ const loginWorker = async (req, res) => {
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
 
     const cookiesOption = {
-      sameSite : 'none',
+      sameSite : 'None',
       httpOnly:false,
       secure:true,
       path:"/",
