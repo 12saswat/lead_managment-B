@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin:"https://lead.indibus.net",
+    origin:process.env.NODE_ENV == "development" ? "http://localhost:3000" : "https://lead.indibus.net",
     credentials: true,
   })
 );
