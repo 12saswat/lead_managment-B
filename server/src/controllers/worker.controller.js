@@ -104,7 +104,8 @@ const loginWorker = async (req, res) => {
       sameSite : 'none',
       httpOnly:true,
       domain : ".vercel.app",
-      secure:true
+      secure:true,
+      path:"/"
     }
 
     return res
