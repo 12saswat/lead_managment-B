@@ -106,7 +106,6 @@ const loginWorker = async (req, res) => {
       secure:true,
       path:"/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain:".vercel.app"
     }
 
     return res
