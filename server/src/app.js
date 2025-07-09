@@ -67,5 +67,12 @@ try {
   console.log("File: app.js", "Line 67:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
+import  categoryRouter from "./routes/category.routes.js";
+try {
+  app.use("/api/v1/category", categoryRouter);
+} catch (error) {
+  console.log("File: app.js", "Line 74:", error);
+  throw new Error("Error occurred in seed routes", { cause: error });
+}
 
 export default app;
