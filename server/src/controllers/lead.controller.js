@@ -21,6 +21,12 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
             status,
             priority } = req.body;
 
+             const categoryDoc = await Category.findOne({ title: category });
+
+            if (!categoryDoc) {
+                   return res.status(400).json({ error: 'Category not found' });
+                     }
+
         if (!name || (!email && !phoneNumber)) {
             return res.status(400).json({
                 success: false,
@@ -76,7 +82,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
                 name,
                 email,
                 phoneNumber,
-                category,
+                category: categoryDoc._id,
                 position,
                 leadSource,
                 notes,
@@ -92,7 +98,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
             response: {
                 message: "Lead created successfully!"
             },
-            data: null
+            data: newLead
         });
 
     } catch (error) {
