@@ -2,15 +2,14 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-
+dotenv.config();
 const app = express();
+
+console.log("This is key1>>", process.env.NODE_ENV);
 
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "your link goes here"
-        : "http://localhost:3000",
+    origin:process.env.NODE_ENV == "development" ? "http://localhost:3000" : "https://lead.indibus.net",
     credentials: true,
   })
 );
