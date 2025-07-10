@@ -1,74 +1,73 @@
-import Lead from '../models/lead.model.js';
-import  Category from '../models/categories.model.js';
-import  { Campaign } from '../models/campaign.model.js';
-import  Document from '../models/document.model.js';
-import  Conversation from '../models/conversation.model.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import Lead from "../models/lead.model.js";
+import Category from "../models/categories.model.js";
+import { Campaign } from "../models/campaign.model.js";
+import Document from "../models/document.model.js";
+import Conversation from "../models/conversation.model.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import xlsx from "xlsx";
+import fs from "fs";
 
+const createLead = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phoneNumber,
+      category,
+      position,
+      leadSource,
+      notes,
+      status,
+      priority,
+    } = req.body;
 
+    const categoryDoc = await Category.findOne({ title: category });
 
+    if (!categoryDoc) {
+      return res.status(400).json({ error: "Category not found" });
+    }
 
- const createLead = async (req, res) => {
-    try {
-         const { 
-            name,
-            email,
-            phoneNumber,
-            category,
-            position,
-            leadSource,
-            notes,
-            status,
-            priority } = req.body;
+    if (!name || (!email && !phoneNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Name, email or phone are required",
+        },
+      });
+    }
 
-             const categoryDoc = await Category.findOne({ title: category });
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Invalid email format",
+        },
+      });
+    }
 
-            if (!categoryDoc) {
-                   return res.status(400).json({ error: 'Category not found' });
-                     }
+    const existingLead = await Lead.findOne({ email });
+    if (existingLead) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          message: "Lead with this email already exists",
+        },
+      });
+    }
 
-        if (!name || (!email && !phoneNumber)) {
-            return res.status(400).json({
-                success: false,
-                error: {
-                    message: "Name, email or phone are required"
-                }
-            });
-        }
-
-        // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (email && !emailRegex.test(email)) {
-            return res.status(400).json({
-                success: false,
-                error: {
-                    message: "Invalid email format"
-                }
-            });
-        }
-
-
-        const existingLead = await Lead.findOne({ email });
-        if (existingLead) {
-            return res.status(409).json({
-                success: false,
-                error: {
-                    message: "Lead with this email already exists"
-                }
-            });
-        }
-
-        const documentRefs = [];
+    const documentRefs = [];
 
     if (req.files && Array.isArray(req.files)) {
-      for (const file of req.files) {   
+      for (const file of req.files) {
         const result = await uploadOnCloudinary(file.path);
         if (result?.secure_url) {
           // Create a new Document in DB
           const doc = await Document.create({
             url: result.secure_url,
             size: file.size,
-            description: req.body.description || file.originalname, 
+            description: req.body.description || file.originalname,
           });
 
           documentRefs.push(doc);
@@ -76,45 +75,40 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
       }
     }
 
+    const newLead = new Lead({
+      name,
+      email,
+      phoneNumber,
+      category: categoryDoc._id,
+      position,
+      leadSource,
+      notes,
+      status,
+      priority,
+      documents: documentRefs,
+    });
+    await newLead.save();
+    await newLead.populate({
+      path: "documents",
+      select: "url description size createdAt _id",
+    });
 
-        const newLead = new Lead(
-            {
-                name,
-                email,
-                phoneNumber,
-                category: categoryDoc._id,
-                position,
-                leadSource,
-                notes,
-                status,
-                priority,
-                documents: documentRefs,
-
-            });
-        await newLead.save();
-         await newLead.populate({
-          path: 'documents',
-          select: 'url description size createdAt _id'
-        });
-
-        return res.status(201).json({
-            success: true,
-            response: {
-                message: "Lead created successfully!"
-            },
-            data: newLead
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            error: {
-                message: "Internal Server error"
-            }
-        });
-    }
+    return res.status(201).json({
+      success: true,
+      response: {
+        message: "Lead created successfully!",
+      },
+      data: newLead,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: "Internal Server error",
+      },
+    });
+  }
 };
-
 
 const getAllLeads = async (req, res) => {
   try {
@@ -132,13 +126,13 @@ const getAllLeads = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 })
-      .populate('category', 'title color description _id')
-      .populate('createdBy', 'name _id')
-      .populate('assignedTo', 'name _id')
+      .populate("category", "title color description _id")
+      .populate("createdBy", "name _id")
+      .populate("assignedTo", "name _id")
       .lean();
 
     // Transform data to match response format
-    const formattedLeads = leads.map(lead => ({
+    const formattedLeads = leads.map((lead) => ({
       id: lead._id,
       name: lead.name,
       email: lead.email,
@@ -147,7 +141,7 @@ const getAllLeads = async (req, res) => {
         id: lead.category._id,
         title: lead.category.title,
         color: lead.category.color,
-        description: lead.category.description
+        description: lead.category.description,
       },
       position: lead.position,
       leadSource: lead.leadSource,
@@ -173,7 +167,7 @@ const getAllLeads = async (req, res) => {
     return res.status(200).json({
       success: true,
       response: {
-        message: 'Leads retrieved successfully!',
+        message: "Leads retrieved successfully!",
       },
       data: {
         leads: formattedLeads,
@@ -187,11 +181,11 @@ const getAllLeads = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get All Leads Error:', error);
+    console.error("Get All Leads Error:", error);
     return res.status(500).json({
       success: false,
       error: {
-        message: 'Internal Server error',
+        message: "Internal Server error",
       },
     });
   }
@@ -204,27 +198,26 @@ const getLeadById = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: {
-          message: 'Lead ID is required'    
-        }
+          message: "Lead ID is required",
+        },
       });
     }
 
-
     const lead = await Lead.findOne({ _id: leadId, isDeleted: false })
-      .populate('category', 'title description color _id')
-      .populate('createdBy', 'name email _id')
-      .populate('assignedTo', 'name email _id')
+      .populate("category", "title description color _id")
+      .populate("createdBy", "name email _id")
+      .populate("assignedTo", "name email _id")
       .populate({
-        path: 'campaignSent',
-        select: 'title type _id'
+        path: "campaignSent",
+        select: "title type _id",
       })
       .populate({
-        path: 'documents',
-        select: 'url description size createdAt _id'
+        path: "documents",
+        select: "url description size createdAt _id",
       })
       .populate({
-        path: 'Conversations',
-        select: 'date conclusion isProfitable followUpDate addedBy _id'
+        path: "Conversations",
+        select: "date conclusion isProfitable followUpDate addedBy _id",
       })
       .lean();
 
@@ -232,8 +225,8 @@ const getLeadById = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: {
-          message: 'Lead not found'
-        }
+          message: "Lead not found",
+        },
       });
     }
 
@@ -246,7 +239,7 @@ const getLeadById = async (req, res) => {
         id: lead.category._id,
         title: lead.category.title,
         description: lead.category.description,
-        color: lead.category.color
+        color: lead.category.color,
       },
       position: lead.position,
       leadSource: lead.leadSource,
@@ -254,56 +247,55 @@ const getLeadById = async (req, res) => {
       createdBy: lead.createdBy && {
         id: lead.createdBy._id,
         name: lead.createdBy.name,
-        email: lead.createdBy.email
+        email: lead.createdBy.email,
       },
       assignedTo: lead.assignedTo && {
         id: lead.assignedTo._id,
         name: lead.assignedTo.name,
-        email: lead.assignedTo.email
+        email: lead.assignedTo.email,
       },
-      campaignSent: (lead.campaignSent || []).map(c => ({
+      campaignSent: (lead.campaignSent || []).map((c) => ({
         id: c._id,
         title: c.title,
-        type: c.type
+        type: c.type,
       })),
       status: lead.status,
       priority: lead.priority,
       followUpDates: lead.followUpDates,
       lastContact: lead.lastContact,
-      documents: (lead.documents || []).map(doc => ({
+      documents: (lead.documents || []).map((doc) => ({
         id: doc._id,
         url: doc.url,
         description: doc.description,
         size: doc.size,
-        createdAt: doc.createdAt
+        createdAt: doc.createdAt,
       })),
-      conversations: (lead.Conversations || []).map(conv => ({
+      conversations: (lead.Conversations || []).map((conv) => ({
         id: conv._id,
         date: conv.date,
         conclusion: conv.conclusion,
         isProfitable: conv.isProfitable,
         followUpDate: conv.followUpDate,
-        addedBy: conv.addedBy
+        addedBy: conv.addedBy,
       })),
       isDeleted: lead.isDeleted,
-      createdAt: lead.createdAt
+      createdAt: lead.createdAt,
     };
 
     return res.status(200).json({
       success: true,
       response: {
-        message: 'Lead retrieved successfully!'
+        message: "Lead retrieved successfully!",
       },
-      data: formattedLead
+      data: formattedLead,
     });
-
   } catch (error) {
-    console.error('Get Lead by ID Error:', error);
+    console.error("Get Lead by ID Error:", error);
     return res.status(500).json({
       success: false,
       error: {
-        message: 'Internal Server error'
-      }
+        message: "Internal Server error",
+      },
     });
   }
 };
@@ -326,10 +318,10 @@ const updateLeadById = async (req, res) => {
     } = req.body;
 
     if (!leadId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         error: {
-          message: 'Lead ID is required',
+          message: "Lead ID is required",
         },
       });
     }
@@ -338,20 +330,21 @@ const updateLeadById = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: {
-          message: 'Invalid email format',
+          message: "Invalid email format",
         },
       });
     }
 
     // Validate status and priority
-    const validStatus = ['new', 'in-progress', 'follow-up', 'closed'];
-    const validPriority = ['high', 'medium', 'low'];
+    const validStatus = ["new", "in-progress", "follow-up", "closed"];
+    const validPriority = ["high", "medium", "low"];
 
     if (status && !validStatus.includes(status)) {
       return res.status(400).json({
         success: false,
         error: {
-          message: 'Invalid status. Must be one of: new, in-progress, follow-up, closed',
+          message:
+            "Invalid status. Must be one of: new, in-progress, follow-up, closed",
         },
       });
     }
@@ -360,7 +353,7 @@ const updateLeadById = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: {
-          message: 'Invalid priority. Must be one of: high, medium, low',
+          message: "Invalid priority. Must be one of: high, medium, low",
         },
       });
     }
@@ -371,7 +364,7 @@ const updateLeadById = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: {
-          message: 'Lead not found',
+          message: "Lead not found",
         },
       });
     }
@@ -388,18 +381,18 @@ const updateLeadById = async (req, res) => {
         return res.status(409).json({
           success: false,
           error: {
-            message: 'Lead with this email already exists',
+            message: "Lead with this email already exists",
           },
         });
       }
     }
 
     // Check if category exists
-    if (category && !await Category.findById(category)) {
+    if (category && !(await Category.findById(category))) {
       return res.status(404).json({
         success: false,
         error: {
-          message: 'Category not found',
+          message: "Category not found",
         },
       });
     }
@@ -419,7 +412,7 @@ const updateLeadById = async (req, res) => {
       lastContact,
     };
 
-     // Remove undefined/null to avoid overwriting
+    // Remove undefined/null to avoid overwriting
     // Object.keys(updateData).forEach((key) => {
     //   if (updateData[key] === undefined || updateData[key] === null) {
     //     delete updateData[key];
@@ -431,23 +424,22 @@ const updateLeadById = async (req, res) => {
     return res.status(200).json({
       success: true,
       response: {
-        message: 'Lead updated successfully!',
+        message: "Lead updated successfully!",
       },
       data: null,
     });
-
   } catch (error) {
-    console.error('Update Lead Error:', error);
+    console.error("Update Lead Error:", error);
     return res.status(500).json({
       success: false,
       error: {
-        message: 'Internal Server error',
+        message: "Internal Server error",
       },
     });
   }
 };
 
- const deleteLead = async (req, res) => {
+const deleteLead = async (req, res) => {
   try {
     const { id } = req.params;
     const lead = await Lead.findOne({ _id: id, isDeleted: false });
@@ -470,7 +462,6 @@ const updateLeadById = async (req, res) => {
       });
     }
 
-    
     lead.isDeleted = true;
     await lead.save();
 
@@ -481,7 +472,6 @@ const updateLeadById = async (req, res) => {
       },
       data: null,
     });
-
   } catch (error) {
     console.error("Error deleting lead:", error);
     return res.status(500).json({
@@ -493,7 +483,125 @@ const updateLeadById = async (req, res) => {
   }
 };
 
+const bulkUploadLeads = async (req, res) => {
+  try {
+    const { category, assignedTo } = req.body;
 
+    if (req.fileValidationError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: req.fileValidationError,
+        },
+      });
+    }
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "No file uploaded",
+        },
+      });
+    }
 
+    const workbook = xlsx.readFile(req.file.path);
 
-export {createLead ,getAllLeads, getLeadById, updateLeadById , deleteLead}; 
+    // console.log("Workbook:", workbook);
+    console.log("Sheet Names:", workbook.SheetNames);
+    if (workbook.SheetNames.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Uploaded file is empty or invalid",
+        },
+      });
+    }
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    let totalProcessed = 0;
+    let successful = 0;
+    let failed = 0;
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      totalProcessed++;
+      const row = rows[i];
+
+      if (!row.name || !row.email) {
+        failed++;
+        errors.push({
+          row: i + 2,
+          error: "Missing required field: name or email",
+        });
+        continue;
+      }
+
+      if (!/^\S+@\S+\.\S+$/.test(row.email)) {
+        failed++;
+        errors.push({
+          row: i + 2,
+          error: "Invalid email format",
+        });
+        continue;
+      }
+
+      try {
+        await Lead.create({
+          name: row.name,
+          email: row.email.toLowerCase(),
+          phoneNumber: row.phoneNumber || null,
+          category,
+          position: row.position || "",
+          leadSource: row.leadSource || "",
+          notes: row.notes || "",
+          createdBy: req.user._id,
+          assignedTo,
+          status: row.status || "new",
+          priority: row.priority || "medium",
+        });
+        successful++;
+      } catch (err) {
+        console.error("Error creating lead:", err);
+        failed++;
+        errors.push({
+          row: i + 2,
+          error: "Database error or duplicate entry",
+        });
+      }
+    }
+
+    // Delete uploaded file after processing
+    fs.unlink(req.file.path, () => {});
+
+    return res.status(201).json({
+      success: true,
+      response: {
+        message: "Leads uploaded successfully!",
+      },
+      data: {
+        totalProcessed,
+        successful,
+        failed,
+        errors,
+      },
+    });
+  } catch (error) {
+    console.error("Bulk upload error:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: "Internal Server error",
+      },
+    });
+  }
+};
+
+export {
+  createLead,
+  getAllLeads,
+  getLeadById,
+  updateLeadById,
+  deleteLead,
+  bulkUploadLeads,
+};
