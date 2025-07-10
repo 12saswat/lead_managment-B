@@ -39,7 +39,7 @@ const checkAuth = async (req, res, next) => {
 
     // Attach a normalized user object with role
     req.user = {
-     user,
+     _id: user._id,
      role, // 'manager' or 'worker'
     };
 

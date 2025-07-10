@@ -3,8 +3,7 @@ import mongoose from 'mongoose';
 const assignmentSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Manager',
-    required: true,
+    ref: 'Manager'
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
@@ -31,6 +30,10 @@ const assignmentSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'overdue', 'completed'],
     default: 'active',
+  },
+  notes: {
+    type: String,
+    trim: true,
   },
 });
 
