@@ -10,8 +10,8 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
 
  const createLead = async (req, res) => {
     try {
-        const { 
-          name,
+         const { 
+            name,
             email,
             phoneNumber,
             category,
@@ -71,7 +71,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
             description: req.body.description || file.originalname, 
           });
 
-          documentRefs.push(doc._id);
+          documentRefs.push(doc);
         }
       }
     }
@@ -92,6 +92,10 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
 
             });
         await newLead.save();
+         await newLead.populate({
+          path: 'documents',
+          select: 'url description size createdAt _id'
+        });
 
         return res.status(201).json({
             success: true,
