@@ -57,7 +57,7 @@ const leadSchema = new mongoose.Schema({
   },
   followUpDates: [
     {
-      type: Date,
+      type: String,
     },
   ],
   lastContact: {
