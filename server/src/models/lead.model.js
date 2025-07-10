@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const leadSchema = new mongoose.Schema({
   name: {
@@ -16,7 +16,7 @@ const leadSchema = new mongoose.Schema({
   },
   category: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
+    ref: "Category",
   },
   position: {
     type: String,
@@ -29,31 +29,31 @@ const leadSchema = new mongoose.Schema({
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Manager',
+    ref: "Manager",
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Worker',
+    ref: "Worker",
   },
   campaignSent: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Campaign',
+      ref: "Campaign",
     },
   ],
   status: {
     type: String,
-    enum: ['new', 'in-progress', 'follow-up', 'closed'],
-    default: 'new',
+    enum: ["new", "in-progress", "follow-up", "closed"],
+    default: "new",
   },
   priority: {
     type: String,
-    enum: ['high', 'medium', 'low'],
-    default: 'medium',
+    enum: ["high", "medium", "low"],
+    default: "medium",
   },
   followUpDates: [
     {
-      type: Date,
+      type: String,
     },
   ],
   lastContact: {
@@ -61,14 +61,18 @@ const leadSchema = new mongoose.Schema({
   },
   documents: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Document',
+      documentId: { type: mongoose.Schema.Types.ObjectId, ref: "Document" },
+      url: String,
+      description: String,
+      createdAt: { type: Date, default: Date.now },
+      size: Number,
     },
   ],
+
   Conversations: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Conversation',
+      ref: "Conversation",
     },
   ],
   isDeleted: {
@@ -79,9 +83,8 @@ const leadSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-
 });
 
-const Lead = mongoose.model('Lead', leadSchema);
+const Lead = mongoose.model("Lead", leadSchema);
 
 export default Lead;
