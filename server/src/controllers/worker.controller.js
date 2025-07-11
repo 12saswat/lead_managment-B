@@ -2,9 +2,6 @@ import { Worker } from "../models/worker.models.js";
 import generateOtp from "../utils/generateOtp.js";
 import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
-import { error } from "console";
-import dotenv from "dotenv";
-dotenv.config();
 
 const registerWorker = async (req, res) => {
   try {
@@ -101,14 +98,12 @@ const loginWorker = async (req, res) => {
 
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
-    console.log("This is key>>", process.env.NODE_ENV);
+
     const cookiesOption = {
-      sameSite : 'strict',
+      sameSite : 'none',
       httpOnly:true,
-      secure:process.env.NODE_ENV == "development" ? false : true,
-      path:"/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: process.env.NODE_ENV == "development" ? "localhost" : ".indibus.net",
+      domain : ".vercel.app",
+      secure:true
     }
 
     return res
@@ -160,7 +155,9 @@ const sendOtp = async (req, res) => {
     worker.otpExpiry = expiry;
     await worker.save();
 
-    const linkUrl = `${process.env.CLIENT_URL}/reset-password/${worker._id}`;
+    // Create a link for password reset
+    // Ensure CLIENT_URL is defined in your environment variables
+    const linkUrl = `${process.env.CLIENT_URL}/worker/auth/reset-password/${worker._id}`;
 
     // Email content
     // Use a template literal to create the HTML content
@@ -207,8 +204,8 @@ const verifyOtp = async (req, res) => {
     }
 
     const userId = req.params.id;
-    console.log("THis is userID>>",userId)
     const user = await Worker.findById(userId);
+
     if (!user || !user.otp || !user.otpExpiry) {
       return res.status(400).json({
         success: false,
@@ -232,9 +229,7 @@ const verifyOtp = async (req, res) => {
       response: {
         message: "OTP verified successfully",
       },
-      data: {
-        workerId: user,
-      },
+      data: null,
     });
   } catch (err) {
     console.error("Error verifying OTP:", err);
@@ -260,7 +255,8 @@ const resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({    //  <-- return was missing here
+      return res.status(400).json({
+        //  <-- return was missing here
         success: false,
         message: "password must be at least 6 characters",
       });

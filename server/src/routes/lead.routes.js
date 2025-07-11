@@ -15,6 +15,6 @@ leadRouter.get("/getalllead",checkAuth, getAllLeads);
 leadRouter.get("/getlead/:id",checkAuth, getLeadById);
 leadRouter.put("/updateleads/:id",upload.array("documents", 5),checkAuth,authorizeRoles("manager"), updateLeadById); 
 leadRouter.delete("/deletelead/:id",checkAuth,deleteLead); 
-leadRouter.post("/:id/assign",checkAuth,authorizeRoles("manager"),assignedTo); 
+leadRouter.post("/assign",checkAuth,authorizeRoles("manager"),assignedTo); 
 
 export default leadRouter ;

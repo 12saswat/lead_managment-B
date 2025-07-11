@@ -2,14 +2,12 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-dotenv.config();
-const app = express();
 
-console.log("This is key1>>", process.env.NODE_ENV);
+const app = express();
 
 app.use(
   cors({
-    origin:process.env.NODE_ENV == "development" ? "http://localhost:3000" : "https://lead.indibus.net",
+    origin:"https://ipr-01250601001-f.vercel.app",
     credentials: true,
   })
 );

@@ -31,14 +31,10 @@ const leadSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Manager',
   },
-  assignedTo: [
-  {
-    workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker' },
-    name: String,
-    email: String,
-    assignedAt: Date,
-  }
-],
+  assignedTo: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Worker",
+},
   campaignSent: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -58,6 +54,7 @@ const leadSchema = new mongoose.Schema({
   followUpDates: [
     {
       type: Date,
+      required: true,
     },
   ],
   lastContact: {
