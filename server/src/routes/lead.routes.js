@@ -1,9 +1,10 @@
 import express from "express";
-import { createLead, getAllLeads,getLeadById,updateLeadById , deleteLead} from "../controllers/lead.controller.js";
+import { createLead, getAllLeads,getLeadById,updateLeadById , deleteLead,bulkUploadLeads,} from "../controllers/lead.controller.js";
 import { assignedTo } from "../controllers/assignedTo.controller.js";
 import checkAuth  from "../middlewares/checkAuth.middleware.js";
 import  authorizeRoles  from "../middlewares/authorizeRoles.middleware.js";
 import {upload} from "../middlewares/multer.middleware.js";
+import { xlUpload } from "../middlewares/xlMulter.middleware.js";
 
 
 const leadRouter = express.Router();
@@ -16,5 +17,5 @@ leadRouter.get("/getlead/:id",checkAuth, getLeadById);
 leadRouter.put("/updateleads/:id",upload.array("documents", 5),checkAuth,authorizeRoles("manager"), updateLeadById); 
 leadRouter.delete("/deletelead/:id",checkAuth,deleteLead); 
 leadRouter.post("/assign",checkAuth,authorizeRoles("manager"),assignedTo); 
-
-export default leadRouter ;
+leadRouter.post("/bulk-upload",checkAuth,xlUpload.single("file"),bulkUploadLeads);
+export default leadRouter;

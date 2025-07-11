@@ -99,12 +99,15 @@ const loginWorker = async (req, res) => {
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
 
-    const cookiesOption = {
-      sameSite : 'none',
-      httpOnly:true,
-      domain : ".vercel.app",
-      secure:true
-    }
+     const cookiesOption = {
+      sameSite: "strict",
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "development" ? false : true,
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      domain:
+        process.env.NODE_ENV === "development" ? "localhost" : ".indibus.net",
+    };
 
     return res
       .status(200)
@@ -123,6 +126,33 @@ const loginWorker = async (req, res) => {
       success: false,
       error: {
         message: "Internal Server error",
+      },
+    });
+  }
+};
+const getWorkers = async (req, res) => {
+  try {
+    const workers = await Worker.find().select("-password");
+    if (workers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: "No workers found",
+        },
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      response: {
+        message: "Workers fetched successfully",
+      },
+      data: workers,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: "Internal Server Error",
       },
     });
   }
@@ -305,4 +335,4 @@ const resetPassword = async (req, res) => {
     });
   }
 };
-export { registerWorker, loginWorker, sendOtp, verifyOtp, resetPassword };
+export { registerWorker, loginWorker, sendOtp, verifyOtp, resetPassword , getWorkers};
