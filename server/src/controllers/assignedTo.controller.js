@@ -2,20 +2,39 @@ import Assignment from "../models/assignment.model.js";
 import Lead from "../models/lead.model.js";
 import { Worker } from "../models/worker.models.js";
 import Category from "../models/categories.model.js";
-
+import mongoose from "mongoose";
 
 const assignedTo = async (req, res) => {
   try {
-    const { assignedTo, priority, notes , dueDate , Category:categoryName } = req.body;
-    const leadId = req.params.id;
+    const {
+      leadIds,
+      assignedTo,
+      priority = "medium",
+      notes,
+      dueDate,
+      categoryId,
+    } = req.body;
 
-    if (!assignedTo || !priority) {
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
       return res.status(400).json({
         success: false,
-        error: {
-          code: 400,
-          message: "Assigned worker and priority are required",
-        },
+        error: { code: 400, message: "At least one lead ID must be provided" },
+      });
+    }
+
+    for (const id of leadIds) {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 400, message: `Invalid lead ID: ${id}` },
+        });
+      }
+    }
+
+    if (!assignedTo || !mongoose.Types.ObjectId.isValid(assignedTo)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 400, message: "Invalid or missing worker ID" },
       });
     }
 
@@ -30,127 +49,113 @@ const assignedTo = async (req, res) => {
       });
     }
 
-     // Validate dueDate
     if (dueDate && new Date(dueDate) <= new Date()) {
       return res.status(400).json({
         success: false,
-        error: {
-          code: 400,
-          message: "Due date must be in the future",
-        },
+        error: { code: 400, message: "Due date must be in the future" },
       });
     }
 
-    // Check lead exists
-    const lead = await Lead.findById(leadId);
-    if (!lead) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 404,
-          message: "Lead not found",
-        },
-      });
+    let finalCategoryId = null;
+    if (categoryId) {
+      if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 400, message: `Invalid category ID` },
+        });
+      }
+
+      const categoryDoc = await Category.findById(categoryId);
+      if (!categoryDoc) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 404, message: `Category not found` },
+        });
+      }
+
+      finalCategoryId = categoryDoc._id;
     }
 
-    // Check worker exists
     const worker = await Worker.findById(assignedTo);
     if (!worker) {
       return res.status(404).json({
         success: false,
-        error: {
-          code: 404,
-          message: "Worker not found",
-        },
+        error: { code: 404, message: "Worker not found" },
       });
     }
 
-   
-  // Check if already assigned
-const alreadyAssigned = Array.isArray(lead.assignedTo) &&
-  lead.assignedTo.some((a) => a.workerId?.toString() === assignedTo?.toString());
-
-
-
-    if (alreadyAssigned) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 400,
-          message: "Lead is already assigned to this worker",
-        },
-      });
-    }
-
-      // Get category by name
-    let categoryId = lead.category; 
-    if (categoryName) {
-      const categoryDoc = await Category.findOne({ title: categoryName });
-      if (!categoryDoc) {
-        return res.status(400).json({
+    // Check if leads are already assigned
+    for (const leadId of leadIds) {
+      const lead = await Lead.findById(leadId);
+      if (!lead) {
+        return res.status(404).json({
           success: false,
-          error: {
-            code: 400,
-            message: `Category '${categoryName}' not found`,
-          },
+          error: { code: 404, message: `Lead not found: ${leadId}` },
         });
       }
-      categoryId = categoryDoc._id;
+
+      if (lead.assignedTo) {
+        if (lead.assignedTo.toString() === assignedTo) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 400,
+              message: `Lead ${leadId} is already assigned to this worker`,
+            },
+          });
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 400,
+              message: `Lead ${leadId} is already assigned to another worker`,
+            },
+          });
+        }
+      }
     }
 
-    // Create assignment
     const assignment = new Assignment({
-      createdBy: req.user._id, 
-      assignedTo,
-      leads: [lead._id],
+      createdBy: req.user._id,
+      assignedTo: worker._id,
+      category: finalCategoryId || null,
+      leads: leadIds,
       priority,
       notes,
-      FollowUpDate: new Date(dueDate),
-      dueDate: new Date(dueDate), 
+      dueDate: dueDate ? new Date(dueDate) : null,
     });
 
     await assignment.save();
 
     
-   await Lead.findByIdAndUpdate(leadId, {
-        $push: {
-          assignedTo: {
-          workerId: worker._id,
-          name: worker.name,
-          email: worker.email,
-          assignedAt: new Date(),
-          dueDate: new Date(dueDate),
-    },
-  },
-         category: categoryId,
-         followUpDates: new Date(dueDate),
-});
+    for (const leadId of leadIds) {
+      const lead = await Lead.findById(leadId);
+      lead.assignedTo = worker._id;
+      if (finalCategoryId) lead.category = finalCategoryId;
+      if (dueDate) lead.dueDate = new Date(dueDate);
+      await lead.save();
+    }
 
     return res.status(200).json({
       success: true,
       response: {
         code: 200,
-        message: "Lead assigned successfully!",
+        message: "Leads assigned successfully!",
       },
       data: {
         assignmentId: assignment._id,
-        createdBy: assignment.createdBy,
-        assignedTo: assignment.assignedTo,
-        leads: assignment.leads,
-        priority: assignment.priority,
-        status: assignment.status,
-        createdAt: assignment.createdAt,
-        dueDate: assignment.dueDate,
+        assignedTo: worker._id,
+        priority,
+        dueDate,
+        notes,
+        leads: leadIds,
       },
     });
   } catch (error) {
-    console.error("Error assigning lead:", error);
+    console.error("Error assigning leads:", error);
     return res.status(500).json({
       success: false,
-      error: {
-        code: 500,
-        message: "Internal Server error",
-      },
+      error: { code: 500, message: "Internal Server Error" },
     });
   }
 };

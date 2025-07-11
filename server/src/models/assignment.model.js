@@ -18,7 +18,7 @@ const assignmentSchema = new mongoose.Schema({
     }
   ],
   dueDate: {
-    type: Date,
+    type: String,
   },
   priority: {
     type: String,
