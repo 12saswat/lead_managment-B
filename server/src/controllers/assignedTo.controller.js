@@ -1,10 +1,12 @@
 import Assignment from "../models/assignment.model.js";
 import Lead from "../models/lead.model.js";
 import { Worker } from "../models/worker.models.js";
+import Category from "../models/categories.model.js";
+
 
 const assignedTo = async (req, res) => {
   try {
-    const { assignedTo, priority, notes } = req.body;
+    const { assignedTo, priority, notes , dueDate , Category:categoryName } = req.body;
     const leadId = req.params.id;
 
     if (!assignedTo || !priority) {
@@ -24,6 +26,17 @@ const assignedTo = async (req, res) => {
         error: {
           code: 400,
           message: "Invalid priority. Must be one of: low, medium, high, urgent",
+        },
+      });
+    }
+
+     // Validate dueDate
+    if (dueDate && new Date(dueDate) <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 400,
+          message: "Due date must be in the future",
         },
       });
     }
@@ -52,7 +65,7 @@ const assignedTo = async (req, res) => {
       });
     }
 
-    // Check if already assigned
+   
   // Check if already assigned
 const alreadyAssigned = Array.isArray(lead.assignedTo) &&
   lead.assignedTo.some((a) => a.workerId?.toString() === assignedTo?.toString());
@@ -69,18 +82,36 @@ const alreadyAssigned = Array.isArray(lead.assignedTo) &&
       });
     }
 
+      // Get category by name
+    let categoryId = lead.category; 
+    if (categoryName) {
+      const categoryDoc = await Category.findOne({ title: categoryName });
+      if (!categoryDoc) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 400,
+            message: `Category '${categoryName}' not found`,
+          },
+        });
+      }
+      categoryId = categoryDoc._id;
+    }
+
     // Create assignment
     const assignment = new Assignment({
-      createdBy: req.user._id, // Manager
+      createdBy: req.user._id, 
       assignedTo,
       leads: [lead._id],
       priority,
       notes,
+      FollowUpDate: new Date(dueDate),
+      dueDate: new Date(dueDate), 
     });
 
     await assignment.save();
 
-    // Embed worker info into lead
+    
    await Lead.findByIdAndUpdate(leadId, {
         $push: {
           assignedTo: {
@@ -88,8 +119,11 @@ const alreadyAssigned = Array.isArray(lead.assignedTo) &&
           name: worker.name,
           email: worker.email,
           assignedAt: new Date(),
+          dueDate: new Date(dueDate),
     },
   },
+         category: categoryId,
+         followUpDates: new Date(dueDate),
 });
 
     return res.status(200).json({
@@ -106,6 +140,7 @@ const alreadyAssigned = Array.isArray(lead.assignedTo) &&
         priority: assignment.priority,
         status: assignment.status,
         createdAt: assignment.createdAt,
+        dueDate: assignment.dueDate,
       },
     });
   } catch (error) {

@@ -37,6 +37,7 @@ const leadSchema = new mongoose.Schema({
     name: String,
     email: String,
     assignedAt: Date,
+    dueDate: Date,
   }
 ],
   campaignSent: [

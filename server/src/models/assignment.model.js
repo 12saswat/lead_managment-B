@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from 'mongoose';  
 
 const assignmentSchema = new mongoose.Schema({
   createdBy: {
@@ -17,6 +17,9 @@ const assignmentSchema = new mongoose.Schema({
       required: true,
     }
   ],
+  dueDate: {
+    type: Date,
+  },
   priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],

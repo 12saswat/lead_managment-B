@@ -21,11 +21,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
             status,
             priority } = req.body;
 
-             const categoryDoc = await Category.findOne({ title: category });
-
-            if (!categoryDoc) {
-                   return res.status(400).json({ error: 'Category not found' });
-                     }
+          
 
         if (!name || (!email && !phoneNumber)) {
             return res.status(400).json({
@@ -58,6 +54,13 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
             });
         }
 
+ let categoryDoc = null;
+    if (category) {
+      categoryDoc = await Category.findOne({ title: category });
+      if (!categoryDoc) {
+        return res.status(400).json({ error: 'Category not found' });
+      }
+    }
         const documentRefs = [];
 
     if (req.files && Array.isArray(req.files)) {
@@ -75,14 +78,14 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
         }
       }
     }
-
+       
 
         const newLead = new Lead(
             {
                 name,
                 email,
                 phoneNumber,
-                category: categoryDoc._id,
+                category: categoryDoc?._id || undefined,
                 position,
                 leadSource,
                 notes,
