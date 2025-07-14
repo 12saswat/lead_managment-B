@@ -1,130 +1,124 @@
-import Lead from '../models/lead.model.js';
-import  Category from '../models/categories.model.js';
-import  { Campaign } from '../models/campaign.model.js';
-import  Document from '../models/document.model.js';
-import  Conversation from '../models/conversation.model.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import Lead from "../models/lead.model.js";
+import Category from "../models/categories.model.js";
+import { Campaign } from "../models/campaign.model.js";
+import Document from "../models/document.model.js";
+import Conversation from "../models/conversation.model.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import xlsx from "xlsx";
 import fs from "fs";
 
+const createLead = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phoneNumber,
+      category,
+      position,
+      leadSource,
+      notes,
+      status,
+      priority,
+    } = req.body;
 
+    if (!name || (!email && !phoneNumber)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Name, email or phone are required",
+        },
+      });
+    }
 
- const createLead = async (req, res) => {
-    try {
-         const { 
-            name,
-            email,
-            phoneNumber,
-            category,
-            position,
-            leadSource,
-            notes,
-            status,
-            priority } = req.body;
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Invalid email format",
+        },
+      });
+    }
 
-          
+    const existingLead = await Lead.findOne({ email });
+    if (existingLead) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          message: "Lead with this email already exists",
+        },
+      });
+    }
 
-        if (!name || (!email && !phoneNumber)) {
-            return res.status(400).json({
-                success: false,
-                error: {
-                    message: "Name, email or phone are required"
-                }
-            });
-        }
-
-        // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (email && !emailRegex.test(email)) {
-            return res.status(400).json({
-                success: false,
-                error: {
-                    message: "Invalid email format"
-                }
-            });
-        }
-
-
-        const existingLead = await Lead.findOne({ email });
-        if (existingLead) {
-            return res.status(409).json({
-                success: false,
-                error: {
-                    message: "Lead with this email already exists"
-                }
-            });
-        }
-
- let categoryDoc = null;
+    let categoryDoc = null;
     if (category) {
       categoryDoc = await Category.findOne({ title: category });
       if (!categoryDoc) {
-        return res.status(400).json({ error: 'Category not found' });
+        return res.status(400).json({ error: "Category not found" });
       }
     }
-        const documentRefs = [];
+    const documentRefs = [];
 
     if (req.files && Array.isArray(req.files)) {
-      for (const file of req.files) {   
+      for (const file of req.files) {
         const result = await uploadOnCloudinary(file.path);
         if (result?.secure_url) {
           // Create a new Document in DB
           const doc = await Document.create({
             url: result.secure_url,
             size: file.size,
-            description: req.body.description || file.originalname, 
+            description: req.body.description || file.originalname,
           });
 
           documentRefs.push(doc);
         }
       }
     }
-       
 
-        const newLead = new Lead(
-            {
-                name,
-                email,
-                phoneNumber,
-                category: categoryDoc?._id || undefined,
-                position,
-                leadSource,
-                notes,
-                status,
-                priority,
-                documents: documentRefs,
+    const newLead = new Lead({
+      name,
+      email,
+      phoneNumber,
+      category: categoryDoc?._id || undefined,
+      position,
+      leadSource,
+      notes,
+      status,
+      priority,
+      documents: documentRefs,
+    });
+    await newLead.save();
+    await newLead.populate({
+      path: "documents",
+      select: "url description size createdAt _id",
+    });
 
-            });
-        await newLead.save();
-         await newLead.populate({
-          path: 'documents',
-          select: 'url description size createdAt _id'
-        });
-
-        return res.status(201).json({
-            success: true,
-            response: {
-                message: "Lead created successfully!"
-            },
-            data: newLead
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            error: {
-                message: "Internal Server error"
-            }
-        });
-    }
+    return res.status(201).json({
+      success: true,
+      response: {
+        message: "Lead created successfully!",
+      },
+      data: newLead,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: "Internal Server error",
+      },
+    });
+  }
 };
-
 
 const getAllLeads = async (req, res) => {
   try {
     const { page = 1, limit = 10, status, priority, category } = req.query;
     const filter = { isDeleted: false };
 
+    if (req.user?.role === "worker") {
+      filter.assignedTo = req.user._id;
+    }
     // Optional Filters
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
@@ -607,4 +601,11 @@ const bulkUploadLeads = async (req, res) => {
   }
 };
 
-export { createLead, getAllLeads,getLeadById,updateLeadById,deleteLead,bulkUploadLeads};
+export {
+  createLead,
+  getAllLeads,
+  getLeadById,
+  updateLeadById,
+  deleteLead,
+  bulkUploadLeads,
+};
