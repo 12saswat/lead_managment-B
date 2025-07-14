@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin:"https://ipr-01250601001-f.vercel.app",
+    origin:"https://lead.indibus.net",
     credentials: true,
   })
 );
@@ -30,7 +30,7 @@ import userRouter from "./routes/user.routes.js";
 try {
   app.use("/api/v1/user", userRouter);
 } catch (error) {
-  console.log("File: app.js", "Line 35:", error);
+  console.log("File: app.js", "Line 33:", error);
   throw new Error("Error Occured in Routes", error);
 }
 
@@ -38,7 +38,7 @@ import workerRouter from "./routes/worker.routes.js";
 try {
   app.use("/api/v1/worker", workerRouter);
 } catch (error) {
-  console.log("File: app.js", "Line 44:", error);
+  console.log("File: app.js", "Line 41:", error);
   throw new Error("Error Occured in Routes", error);
 }
 // Import Manager Routes and State it's Functions in Try Catch Block
@@ -46,7 +46,7 @@ import managerRouter from "./routes/manager.routes.js";
 try {
   app.use("/api/v1/manager", managerRouter);
 } catch (error) {
-  console.log("File: app.js", "Line 52:", error);
+  console.log("File: app.js", "Line 49:", error);
   throw new Error("Error occurred in manager routes", { cause: error });
 }
 // Import manager Seed Routes and State it's Functions in Try Catch Block
@@ -54,21 +54,21 @@ import seedRoutes from "./routes/manager.seed.routes.js";
 try {
   app.use("/api/v1/seed", seedRoutes);
 } catch (error) {
-  console.log("File: app.js", "Line 60:", error);
+  console.log("File: app.js", "Line 57:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
 import leadRouter from "./routes/lead.routes.js";
 try {
   app.use("/api/v1/lead", leadRouter);
 } catch (error) {
-  console.log("File: app.js", "Line 67:", error);
+  console.log("File: app.js", "Line 64:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
 import  categoryRouter from "./routes/category.routes.js";
 try {
   app.use("/api/v1/category", categoryRouter);
 } catch (error) {
-  console.log("File: app.js", "Line 74:", error);
+  console.log("File: app.js", "Line 71:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
 

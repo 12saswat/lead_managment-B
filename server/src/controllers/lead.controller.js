@@ -21,12 +21,6 @@ const createLead = async (req, res) => {
       priority,
     } = req.body;
 
-    const categoryDoc = await Category.findOne({ title: category });
-
-    if (!categoryDoc) {
-      return res.status(400).json({ error: "Category not found" });
-    }
-
     if (!name || (!email && !phoneNumber)) {
       return res.status(400).json({
         success: false,
@@ -57,6 +51,13 @@ const createLead = async (req, res) => {
       });
     }
 
+    let categoryDoc = null;
+    if (category) {
+      categoryDoc = await Category.findOne({ title: category });
+      if (!categoryDoc) {
+        return res.status(400).json({ error: "Category not found" });
+      }
+    }
     const documentRefs = [];
 
     if (req.files && Array.isArray(req.files)) {
@@ -79,7 +80,7 @@ const createLead = async (req, res) => {
       name,
       email,
       phoneNumber,
-      category: categoryDoc._id,
+      category: categoryDoc?._id || undefined,
       position,
       leadSource,
       notes,
@@ -115,6 +116,9 @@ const getAllLeads = async (req, res) => {
     const { page = 1, limit = 10, status, priority, category } = req.query;
     const filter = { isDeleted: false };
 
+    if (req.user?.role === "worker") {
+      filter.assignedTo = req.user._id;
+    }
     // Optional Filters
     if (status) filter.status = status;
     if (priority) filter.priority = priority;

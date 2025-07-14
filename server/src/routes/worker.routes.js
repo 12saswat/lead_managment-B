@@ -1,14 +1,14 @@
 import { Router } from "express";
 import {
-  getWorkers,
   loginWorker,
   registerWorker,
   resetPassword,
   sendOtp,
   verifyOtp,
+  getWorkers,
 } from "../controllers/worker.controller.js";
-import authorizeRoles from "../middlewares/authorizeRoles.middleware.js";
 import checkAuth from "../middlewares/checkAuth.middleware.js";
+import authorizeRoles from "../middlewares/authorizeRoles.middleware.js";
 
 const router = Router();
 
@@ -21,13 +21,7 @@ router.post("/login", loginWorker);
 router.post("/forgot-password", sendOtp);
 router.post("/verify-otp/:id", verifyOtp);
 router.post("/reset-password/:id", resetPassword);
-
 // get all workers
-router.get(
-  "/get-all-workers",
-  checkAuth,
-  authorizeRoles("manager"),
-  getWorkers
-);
+router.get("/get-all-workers", checkAuth, authorizeRoles("manager"), getWorkers);
 
 export default router;
