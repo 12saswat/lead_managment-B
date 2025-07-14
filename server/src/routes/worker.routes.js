@@ -7,7 +7,7 @@ import {
   verifyOtp,
   getWorkers,
 } from "../controllers/worker.controller.js";
-import checkAuth from "../middlewares/workerMiddleware.js";
+import checkAuth from "../middlewares/checkAuth.middleware.js";
 import authorizeRoles from "../middlewares/authorizeRoles.middleware.js";
 
 const router = Router();
