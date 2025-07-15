@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const conversationSchema = new mongoose.Schema({
   date: {
-    type: Date,
+    type: String,
     required: true,
   },
   conclusion: {
@@ -11,18 +11,15 @@ const conversationSchema = new mongoose.Schema({
   },
   isProfitable: {
     type: Boolean,
-    default: false,
-  },
-  followUpDate: {
-    type: Date,
+    default: null,
   },
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Lead', 
+    ref: "Lead",
     required: true,
   },
 });
 
-const Conversation = mongoose.model('Conversation', conversationSchema);
+const Conversation = mongoose.model("Conversation", conversationSchema);
 
 export default Conversation;

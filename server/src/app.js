@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin:"https://lead.indibus.net",
+    origin: "https://lead.indibus.net",
     credentials: true,
   })
 );
@@ -64,7 +64,7 @@ try {
   console.log("File: app.js", "Line 64:", error);
   throw new Error("Error occurred in seed routes", { cause: error });
 }
-import  categoryRouter from "./routes/category.routes.js";
+import categoryRouter from "./routes/category.routes.js";
 try {
   app.use("/api/v1/category", categoryRouter);
 } catch (error) {

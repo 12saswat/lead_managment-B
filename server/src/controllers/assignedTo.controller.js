@@ -44,7 +44,8 @@ const assignedTo = async (req, res) => {
         success: false,
         error: {
           code: 400,
-          message: "Invalid priority. Must be one of: low, medium, high, urgent",
+          message:
+            "Invalid priority. Must be one of: low, medium, high, urgent",
         },
       });
     }
@@ -123,11 +124,11 @@ const assignedTo = async (req, res) => {
       priority,
       notes,
       dueDate: dueDate ? new Date(dueDate) : null,
+      status: "in-progress",
     });
 
     await assignment.save();
 
-    
     for (const leadId of leadIds) {
       const lead = await Lead.findById(leadId);
       lead.assignedTo = worker._id;
