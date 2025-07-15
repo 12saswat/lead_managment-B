@@ -1,6 +1,5 @@
 import Lead from "../models/lead.model.js";
 import Category from "../models/categories.model.js";
-import { Campaign } from "../models/campaign.model.js";
 import Document from "../models/document.model.js";
 import Conversation from "../models/conversation.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
@@ -619,75 +618,76 @@ const bulkUploadLeads = async (req, res) => {
 const addFollowUp = async (req, res) => {
   try {
     const id = req.params.id;
+
     if (!id) {
       return res.status(400).json({
         success: false,
-        error: {
-          message: "Lead ID is required",
-        },
+        error: { message: "Lead ID is required" },
       });
     }
+
     const lead = await Lead.findById(id);
     if (!lead) {
       return res.status(404).json({
         success: false,
-        error: {
-          message: "Lead not found",
-        },
+        error: { message: "Lead not found" },
       });
     }
-    const { followUpDate, notes } = req.body;
+
+    const { followUpDate, conclusion } = req.body;
+
     if (
       !followUpDate ||
       followUpDate.trim() === "" ||
-      !notes ||
-      notes.trim() === ""
+      !conclusion ||
+      conclusion.trim() === ""
     ) {
       return res.status(400).json({
         success: false,
-        error: {
-          message: "Follow-up date and notes are required",
-        },
+        error: { message: "Follow-up date and notes are required" },
       });
     }
-    const followUpDateObj = new Date(followUpDate);
 
-    // Check if follow-up date is valid and in the future
+    const followUpDateObj = new Date(followUpDate);
     const now = new Date();
 
     if (isNaN(followUpDateObj.getTime()) || followUpDateObj <= now) {
       return res.status(400).json({
         success: false,
-        error: {
-          message: "Follow-up date must be in the future",
-        },
+        error: { message: "Follow-up date must be in the future" },
       });
     }
 
-    // Add follow-up date to array
+    const newConversation = new Conversation({
+      date: followUpDate,
+      conclusion: conclusion,
+      addedBy: lead._id,
+    });
+
+    await newConversation.save();
+
+    lead.Conversations.push(newConversation._id);
+    lead.status = "follow-up";
+    lead.lastContact = now;
     lead.followUpDates.push(followUpDate);
-    lead.notes = notes;
 
     await lead.save();
 
     return res.status(200).json({
       success: true,
       response: {
-        message: "Follow-up date added successfully!",
+        message: "Follow-up added via conversation successfully!",
       },
       data: {
-        id: lead._id,
-        followUpDates: lead.followUpDates,
-        notes: lead.notes,
+        leadId: lead._id,
+        conversation: newConversation,
       },
     });
   } catch (error) {
-    console.error("Error adding follow-up:", error);
+    console.error("Error adding follow-up (conversation):", error);
     return res.status(500).json({
       success: false,
-      error: {
-        message: "Internal Server error",
-      },
+      error: { message: "Internal Server error" },
     });
   }
 };

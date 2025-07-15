@@ -29,7 +29,6 @@ leadRouter.put(
   "/updateleads/:id",
   upload.array("documents", 5),
   checkAuth,
-  authorizeRoles("manager"),
   updateLeadById
 );
 leadRouter.delete("/deletelead/:id", checkAuth, deleteLead);
@@ -41,10 +40,5 @@ leadRouter.post(
   bulkUploadLeads
 );
 
-leadRouter.post(
-  "/:id/follow-up",
-  checkAuth,
-  authorizeRoles("manager"),
-  addFollowUp
-);
+leadRouter.post("/:id/follow-up", checkAuth, addFollowUp);
 export default leadRouter;

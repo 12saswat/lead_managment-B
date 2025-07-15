@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const conversationSchema = new mongoose.Schema({
   date: {
-    type: Date,
+    type: String,
     required: true,
   },
   conclusion: {
@@ -18,7 +18,7 @@ const conversationSchema = new mongoose.Schema({
   },
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Lead', 
+    ref: "Lead",
     required: true,
   },
    isDeleted: {
@@ -32,6 +32,6 @@ const conversationSchema = new mongoose.Schema({
 });
 
 
-const Conversation = mongoose.model('Conversation', conversationSchema);
+const Conversation = mongoose.model("Conversation", conversationSchema);
 
 export default Conversation;
