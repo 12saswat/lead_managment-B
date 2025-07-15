@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const leadSchema = new mongoose.Schema({
   name: {
