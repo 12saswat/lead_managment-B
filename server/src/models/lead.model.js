@@ -70,7 +70,7 @@ const leadSchema = new mongoose.Schema({
     },
   ],
 
-  Conversations: [
+  conversations: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",
