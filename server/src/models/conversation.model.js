@@ -11,7 +11,7 @@ const conversationSchema = new mongoose.Schema({
   },
   isProfitable: {
     type: Boolean,
-    default: false,
+    default: null,
   },
   followUpDate: {
     type: Date,
@@ -21,7 +21,16 @@ const conversationSchema = new mongoose.Schema({
     ref: 'Lead', 
     required: true,
   },
+   isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Worker', 
+  },
 });
+
 
 const Conversation = mongoose.model('Conversation', conversationSchema);
 

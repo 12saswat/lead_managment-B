@@ -72,4 +72,12 @@ try {
   throw new Error("Error occurred in seed routes", { cause: error });
 }
 
+import conversationRouter from "./routes/conversation.routes.js";
+try {
+  app.use("/api/v1/conversation", conversationRouter);
+} catch (error) {
+  console.log("File: app.js", "Line 79:", error);
+  throw new Error("Error occurred in conversation routes", { cause: error });
+}
+
 export default app;
