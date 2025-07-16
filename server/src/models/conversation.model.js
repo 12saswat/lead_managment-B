@@ -13,12 +13,24 @@ const conversationSchema = new mongoose.Schema({
     type: Boolean,
     default: null,
   },
+  followUpDate: {
+    type: Date,
+  },
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Lead",
     required: true,
   },
+   isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Worker', 
+  },
 });
+
 
 const Conversation = mongoose.model("Conversation", conversationSchema);
 
