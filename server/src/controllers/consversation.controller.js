@@ -2,6 +2,34 @@ import Conversation from "../models/conversation.model.js";
 import Lead from "../models/lead.model.js";
 import mongoose from "mongoose";
 
+const endConversation = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+    const { notes, isProfitable } = req.body || {}; ;
+
+    if (!mongoose.Types.ObjectId.isValid(leadId)) {
+      return res.status(400).json({ success: false, message: "Invalid lead ID" });
+    }
+
+    const updated = await Lead.findByIdAndUpdate(
+      leadId,
+      { notes, isProfitable },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Lead not found" });
+    }
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Update Lead Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
+
 const createConversation = async (req, res) => {
   try {
     const { conclusion, isProfitable = null, followUpDate, date } = req.body;
@@ -39,6 +67,35 @@ const createConversation = async (req, res) => {
   }
 };
 
+const getAllConversations = async (req, res) => {
+  try {
+    const user = req.user;
+    const isManager = user?.role === "manager";
+
+    const filter = {
+      isDeleted: false,
+    };
+
+    if (!isManager) {
+  filter.addedBy = user._id; // works if already ObjectId, which is usually true
+}
+
+    const conversations = await Conversation.find(filter)
+      .sort({ date: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: conversations,
+    });
+  } catch (error) {
+    console.error("Get All Conversations Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
 
 
 const getConversationsByLead = async (req, res) => {
@@ -62,15 +119,20 @@ const getConversationsByLead = async (req, res) => {
 
     const isManager = req.user?.role === "manager";
 
-    const filter = {
-      _id: { $in: lead.conversations },
-      ...(isManager ? {} : { isDeleted: false }),
-    };
+ const baseFilter = {
+  _id: { $in: lead.conversations },
+};
 
-    const conversations = await Conversation.find(filter)
+const workerFilter = {
+  ...baseFilter,
+  isDeleted: false,
+  addedBy: req.user._id,
+};
+
+const finalFilter = isManager ? baseFilter : workerFilter;
+
+    const conversations = await Conversation.find(finalFilter)
       .sort({ date: -1 })
-      .populate("addedBy", "name _id")
-      .populate("deletedBy", "name _id")
       .lean();
 
     res.status(200).json({
@@ -88,6 +150,43 @@ const getConversationsByLead = async (req, res) => {
     });
   }
 };
+
+const getConversationsByWorker = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const loggedInUser = req.user;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({ success: false, message: "Invalid worker ID" });
+    }
+
+    const isManager = loggedInUser?.role === "manager";
+    const isSelf = loggedInUser._id.toString() === workerId;
+
+    // Only allow manager or the same worker
+    if (!isManager && !isSelf) {
+      return res.status(403).json({ success: false, message: "Unauthorized access" });
+    }
+
+    const filter = {
+      addedBy: workerId,
+      isDeleted: false,
+    };
+
+    const conversations = await Conversation.find(filter)
+      .sort({ date: -1 })
+      .lean();
+
+    res.status(200).json({ success: true, data: conversations });
+
+  } catch (error) {
+    console.error("Get Conversations By Worker Error:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
+
 
 
 
@@ -133,7 +232,10 @@ const deleteConversation = async (req, res) => {
 
 export {
     createConversation,
+    getAllConversations,
   getConversationsByLead,
+  getConversationsByWorker,
+  endConversation,
   updateConversation,
   deleteConversation,
 };
