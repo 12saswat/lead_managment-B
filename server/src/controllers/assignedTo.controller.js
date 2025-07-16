@@ -4,7 +4,7 @@ import { Worker } from "../models/worker.models.js";
 import Category from "../models/categories.model.js";
 import mongoose from "mongoose";
 
-const assignedTo = async (req, res) => {
+const assignedTo = async (req, res) => { 
   try {
     const {
       leadIds,
@@ -124,7 +124,7 @@ const assignedTo = async (req, res) => {
       priority,
       notes,
       dueDate: dueDate ? new Date(dueDate) : null,
-      status: "in-progress",
+      status: "active",
     });
 
     await assignment.save();
@@ -134,6 +134,8 @@ const assignedTo = async (req, res) => {
       lead.assignedTo = worker._id;
       if (finalCategoryId) lead.category = finalCategoryId;
       if (dueDate) lead.dueDate = new Date(dueDate);
+      lead.status = "in-progress";
+
       await lead.save();
     }
 
