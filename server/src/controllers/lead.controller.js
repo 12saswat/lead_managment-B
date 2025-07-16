@@ -661,12 +661,12 @@ const addFollowUp = async (req, res) => {
     const newConversation = new Conversation({
       date: followUpDate,
       conclusion: conclusion,
-      addedBy: lead._id,
+      addedBy: req.user._id,
     });
 
     await newConversation.save();
 
-    lead.Conversations.push(newConversation._id);
+    lead.conversations.push(newConversation._id);
     lead.status = "follow-up";
     lead.lastContact = now;
     lead.followUpDates.push(followUpDate);
