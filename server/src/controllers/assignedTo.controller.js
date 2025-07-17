@@ -3,8 +3,10 @@ import Lead from "../models/lead.model.js";
 import { Worker } from "../models/worker.models.js";
 import Category from "../models/categories.model.js";
 import mongoose from "mongoose";
+import { sendNotification } from "../utils/sendNotification.js";
+import { Manager } from "../models/manager.model.js";
 
-const assignedTo = async (req, res) => { 
+const assignedTo = async (req, res) => {
   try {
     const {
       leadIds,
@@ -128,6 +130,30 @@ const assignedTo = async (req, res) => {
     });
 
     await assignment.save();
+
+    let recipientType = null;
+    const isWorker = await Worker.exists({ _id: assignedTo });
+    if (isWorker) {
+      recipientType = "worker";
+    } else {
+      const isManager = await Manager.exists({ _id: assignedTo });
+      if (isManager) {
+        recipientType = "manager";
+      }
+    }
+
+    const notificationData = {
+      recipient: worker._id,
+      recipientType,
+      sentTo: worker._id,
+      title: "New Lead Assignment",
+      message: `You have been assigned new leads with priority ${priority}.`,
+      type: "assignment",
+      relatedTo: assignment._id,
+      relatedToType: "Assignment",
+    };
+    // Send notification to the worker
+    await sendNotification(notificationData);
 
     for (const leadId of leadIds) {
       const lead = await Lead.findById(leadId);
