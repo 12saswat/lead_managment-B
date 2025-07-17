@@ -11,15 +11,17 @@ const getNotifications = async (req, res) => {
       });
     }
 
+    console.log("Fetching notifications for user:", req.user._id);
+    console.log("User role:", req.user.role);
     const recipientType = req.user.role === "manager" ? "manager" : "worker";
 
     const notifications = await Notification.find({
-      recipient: req.user._id,
+      sentTo: req.user._id,
       recipientType: recipientType,
     })
       .sort({ createdAt: -1 })
       .lean();
-
+    console.log("Notifications found:", notifications);
     if (notifications?.length === 0) {
       return res.status(200).json({
         success: true,
@@ -44,28 +46,42 @@ const getNotifications = async (req, res) => {
 // MARK as read
 const markAsRead = async (req, res) => {
   try {
-    if (!req.params.id) {
+    const { id } = req.params;
+
+    if (!id) {
       return res.status(400).json({
         success: false,
         error: { message: "Notification ID is required" },
       });
     }
-    if (!mongo.ObjectId.isValid(req.params.id)) {
+
+    if (!mongo.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         error: { message: "Invalid Notification ID" },
       });
     }
 
-    // Find the notification by ID and mark it as read
-    const notification = await Notification.findByIdAndUpdate(req.params.id, {
-      isRead: true,
-    });
-    res.json({ success: true, data: notification });
+    // Update the notification and return only the 'isRead' field
+    const updated = await Notification.findByIdAndUpdate(
+      id,
+      { isRead: true },
+      { new: true, select: "isRead" }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        error: { message: "Notification not found" },
+      });
+    }
+
+    res.json({ success: true, data: { isRead: updated.isRead } });
   } catch (err) {
-    res
-      .status(500)
-      .json({ success: false, error: { message: "Failed to mark as read" } });
+    res.status(500).json({
+      success: false,
+      error: { message: "Failed to mark as read" },
+    });
   }
 };
 
@@ -109,7 +125,7 @@ const deleteAllNotifications = async (req, res) => {
     }
 
     const result = await Notification.deleteMany({
-      recipient: userId,
+      sentTo: userId,
       recipientType: role,
     });
 

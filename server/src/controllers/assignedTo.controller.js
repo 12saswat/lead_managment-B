@@ -143,7 +143,7 @@ const assignedTo = async (req, res) => {
     }
 
     const notificationData = {
-      recipient: worker._id,
+      recipient: req.user._id,
       recipientType,
       sentTo: worker._id,
       title: "New Lead Assignment",

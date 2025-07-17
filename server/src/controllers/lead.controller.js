@@ -496,9 +496,9 @@ const updateLeadById = async (req, res) => {
       }
 
       const notificationPayload = {
-        recipient: existingLead.assignedTo,
+        recipient: req.user._id,
         recipientType,
-        sentTo: req.user._id,
+        sentTo: existingLead.assignedTo,
         title: "Lead Updated",
         message: `The lead "${existingLead.name}" assigned to you has been updated.`,
         type: "update",
@@ -563,9 +563,9 @@ const deleteLead = async (req, res) => {
       }
 
       const notificationPayload = {
-        recipient: lead.assignedTo,
+        recipient: req.user._id,
         recipientType,
-        sentTo: req.user._id,
+        sentTo: lead.assignedTo,
         title: "Lead Assignment Removed",
         message: `The lead "${lead.name}" assigned to you has been deleted.`,
         type: "delete",
@@ -697,9 +697,9 @@ const bulkUploadLeads = async (req, res) => {
 
     if (assignedTo) {
       const notificationPayload = {
-        recipient: assignedTo,
+        recipient: req.user._id,
         recipientType,
-        sentTo: req.user._id,
+        sentTo: assignedTo,
         title: "New Lead Assigned",
         message: `You have been assigned a new lead:`,
         type: "assignment",
@@ -818,9 +818,9 @@ const addFollowUp = async (req, res) => {
     if (recipientType) {
       //  Notification 1: New Follow-up Added
       await sendNotification({
-        recipient: lead.assignedTo,
+        recipient: req.user._id,
         recipientType,
-        sentTo: req.user._id,
+        sentTo: lead.assignedTo,
         title: "New Follow-up Added",
         message: "A new follow-up has been added for the lead",
         type: "follow-up",
@@ -830,7 +830,7 @@ const addFollowUp = async (req, res) => {
 
       //  Notification 2: Conversation Started
       await sendNotification({
-        recipient: lead.assignedTo,
+        recipient: req.user._id,
         recipientType,
         sentTo: lead.assignedTo,
         title: "Conversation Started",
