@@ -54,7 +54,8 @@ const leadSchema = new mongoose.Schema({
   },
   followUpDates: [
     {
-      type: String,
+      type: [String],
+      default: [],
     },
   ],
   lastContact: {
@@ -69,11 +70,11 @@ const leadSchema = new mongoose.Schema({
       size: Number,
     },
   ],
-
   conversations: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",
+      default: [],
     },
   ],
   isDeleted: {

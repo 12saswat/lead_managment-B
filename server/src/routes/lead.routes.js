@@ -8,6 +8,7 @@ import {
   bulkUploadLeads,
   addFollowUp,
 } from "../controllers/lead.controller.js";
+import { endConversation } from "../controllers/consversation.controller.js";
 import { assignedTo } from "../controllers/assignedTo.controller.js";
 import checkAuth from "../middlewares/checkAuth.middleware.js";
 import authorizeRoles from "../middlewares/authorizeRoles.middleware.js";
@@ -41,4 +42,5 @@ leadRouter.post(
 );
 
 leadRouter.post("/:id/follow-up", checkAuth, addFollowUp);
+leadRouter.put("/:leadId", checkAuth, endConversation);
 export default leadRouter;

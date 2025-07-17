@@ -18,7 +18,7 @@ const conversationSchema = new mongoose.Schema({
   },
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Lead",
+    ref: "User",
     required: true,
   },
    isDeleted: {
