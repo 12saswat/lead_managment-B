@@ -80,4 +80,12 @@ try {
   throw new Error("Error occurred in conversation routes", { cause: error });
 }
 
+import notificationRouter from "./routes/notification.routes.js";
+try {
+  app.use("/api/v1/notification", notificationRouter);
+} catch (error) {
+  console.log("File: app.js", "Line 87:", error);
+  throw new Error("Error occurred in conversation routes", { cause: error });
+}
+
 export default app;
