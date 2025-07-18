@@ -3,56 +3,106 @@ import Lead from "../models/lead.model.js";
 import mongoose from "mongoose";
 import { Manager } from "../models/manager.model.js";
 import { sendNotification } from "../utils/sendNotification.js";
+import Category from "../models/categories.model.js";
+import { Worker } from "../models/worker.models.js";
 
 const endConversation = async (req, res) => {
   try {
-    const { leadId } = req.params;
-    const { notes, isProfitable } = req.body || {};
+    const leadId = req.params.id;
 
-    if (!mongoose.Types.ObjectId.isValid(leadId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid lead ID" });
-    }
-
-    const updated = await Lead.findByIdAndUpdate(
-      leadId,
-      { notes, isProfitable },
-      { new: true, runValidators: true }
-    );
-
-    if (!updated) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Lead not found" });
-    }
-
-    // Notify all managers
-    // Fetch all managers
-    const managers = await Manager.find({}, "_id");
-
-    // Create a base notification payload
-    const notificationPayload = {
-      recipient: req.user._id,
-      recipientType: req.user.role,
-      title: "Conversation Ended",
-      message: `A conversation has ended for lead "${updated.name}".`,
-      type: "conversation_end",
-      relatedTo: updated._id,
-      relatedToType: "Lead",
-    };
-
-    // Send the same notification to all managers
-    for (const manager of managers) {
-      await sendNotification({
-        ...notificationPayload,
-        sentTo: manager._id,
+    if (!leadId) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "Lead ID is required" },
       });
     }
-    res.status(200).json({ success: true, data: updated });
+
+    if (!mongoose.Types.ObjectId.isValid(leadId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "Invalid Lead ID format" },
+      });
+    }
+
+    const lead = await Lead.findById(leadId);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        error: { message: "Lead not found" },
+      });
+    }
+
+    const { conclusion, isProfitable } = req.body;
+
+    if (
+      !conclusion ||
+      conclusion.trim() === "" ||
+      typeof isProfitable !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: { message: "Conclusion and isProfitable are required" },
+      });
+    }
+
+    const now = new Date();
+
+    const newConversation = new Conversation({
+      date: now,
+      lead: lead._id,
+      conclusion,
+      isProfitable,
+      user: req.user._id,
+      addedBy: req.user._id,
+    });
+
+    await newConversation.save();
+
+    if (!Array.isArray(lead.conversations)) lead.conversations = [];
+    lead.conversations.push(newConversation._id);
+    lead.status = "closed";
+    lead.isProfitable = isProfitable;
+    lead.lastContact = now;
+
+    await lead.save();
+    let recipientType = null;
+    const isWorker = await Worker.exists({ _id: lead.assignedTo });
+    if (isWorker) {
+      recipientType = "worker";
+    } else {
+      const isManager = await Manager.exists({ _id: lead.assignedTo });
+      if (isManager) {
+        recipientType = "manager";
+      }
+    }
+
+    if (recipientType) {
+      await sendNotification({
+        recipient: req.user._id,
+        recipientType,
+        sentTo: lead.assignedTo,
+        title: "Lead Closed",
+        message: `The lead "${lead.name}" has been closed with a conclusion.`,
+        type: "lead_closed",
+        relatedTo: lead._id,
+        relatedToType: "Lead",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead successfully closed with conclusion",
+      data: {
+        leadId: lead._id,
+        conversation: newConversation,
+      },
+    });
   } catch (error) {
-    console.error("Update Lead Error:", error);
-    res.status(500).json({ success: false, message: "Server Error" });
+    console.error("Error in closeLeadWithConclusion:", error);
+    return res.status(500).json({
+      success: false,
+      error: { message: "Internal Server Error" },
+    });
   }
 };
 
@@ -97,31 +147,79 @@ const createConversation = async (req, res) => {
 
 const getAllConversations = async (req, res) => {
   try {
-    const user = req.user;
-    const isManager = user?.role === "manager";
+    if (!req.user)
+      return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const filter = {
-      isDeleted: false,
-    };
+    const filter = { isDeleted: false };
+    if (req.user.role?.toLowerCase() !== "manager")
+      filter.addedBy = req.user._id;
 
-    if (!isManager) {
-      filter.addedBy = user._id; // works if already ObjectId, which is usually true
-    }
+    const conversations = await Conversation.find(filter).lean();
+    const leadIds = [
+      ...new Set(conversations.map((c) => c.lead).filter(Boolean)),
+    ];
+    const userIds = [
+      ...new Set(conversations.map((c) => c.addedBy).filter(Boolean)),
+    ];
 
-    const conversations = await Conversation.find(filter)
-      .sort({ date: -1 })
-      .lean();
+    const leads = await Lead.find({ _id: { $in: leadIds } }).lean();
+    const categoryIds = [
+      ...new Set(leads.map((l) => l.category).filter(Boolean)),
+    ];
+    const categories = await Category.find({
+      _id: { $in: categoryIds },
+    }).lean();
 
-    res.status(200).json({
-      success: true,
-      data: conversations,
+    const [workers, managers] = await Promise.all([
+      Worker.find({ _id: { $in: userIds } })
+        .select("name")
+        .lean(),
+      Manager.find({ _id: { $in: userIds } })
+        .select("name")
+        .lean(),
+    ]);
+
+    const allUsers = [...workers, ...managers];
+    const leadMap = new Map(leads.map((l) => [String(l._id), l]));
+    const categoryMap = new Map(categories.map((c) => [String(c._id), c]));
+    const userMap = new Map(allUsers.map((u) => [String(u._id), u]));
+
+    const result = conversations.map((convo) => {
+      const lead = leadMap.get(String(convo.lead));
+      const user = userMap.get(String(convo.addedBy));
+      const cat = lead ? categoryMap.get(String(lead.category)) : null;
+
+      const addedByRole = workers.find(
+        (w) => String(w._id) === String(convo.addedBy)
+      )
+        ? "worker"
+        : "manager";
+
+      const userName = user?.name || user?.fullName || null;
+
+      return {
+        conversation: convo,
+        meta: {
+          leadName: lead?.name ?? null,
+          leadId: lead?._id ?? null,
+          followupDate: Array.isArray(lead?.followUpDates)
+            ? lead.followUpDates[0]
+            : null,
+          status: lead?.status ?? null,
+
+          [`${addedByRole}Name`]: userName,
+          [`${addedByRole}Id`]: user?._id ?? null,
+
+          categoryId: cat?._id ?? null,
+          categoryTitle: cat?.title ?? null,
+          categoryColor: cat?.color ?? null,
+        },
+      };
     });
-  } catch (error) {
-    console.error("Get All Conversations Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+
+    return res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 

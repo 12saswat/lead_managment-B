@@ -42,5 +42,5 @@ leadRouter.post(
 );
 
 leadRouter.post("/:id/follow-up", checkAuth, addFollowUp);
-leadRouter.put("/endconvo/:Id", checkAuth, endConversation);
+leadRouter.put("/endconvo/:id", checkAuth, endConversation);
 export default leadRouter;
