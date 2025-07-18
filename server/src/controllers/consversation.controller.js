@@ -1,14 +1,18 @@
 import Conversation from "../models/conversation.model.js";
 import Lead from "../models/lead.model.js";
 import mongoose from "mongoose";
+import { Manager } from "../models/manager.model.js";
+import { sendNotification } from "../utils/sendNotification.js";
 
 const endConversation = async (req, res) => {
   try {
     const { leadId } = req.params;
-    const { notes, isProfitable } = req.body || {}; ;
+    const { notes, isProfitable } = req.body || {};
 
     if (!mongoose.Types.ObjectId.isValid(leadId)) {
-      return res.status(400).json({ success: false, message: "Invalid lead ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid lead ID" });
     }
 
     const updated = await Lead.findByIdAndUpdate(
@@ -18,9 +22,33 @@ const endConversation = async (req, res) => {
     );
 
     if (!updated) {
-      return res.status(404).json({ success: false, message: "Lead not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Lead not found" });
     }
 
+    // Notify all managers
+    // Fetch all managers
+    const managers = await Manager.find({}, "_id");
+
+    // Create a base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Ended",
+      message: `A conversation has ended for lead "${updated.name}".`,
+      type: "conversation_end",
+      relatedTo: updated._id,
+      relatedToType: "Lead",
+    };
+
+    // Send the same notification to all managers
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
+      });
+    }
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
     console.error("Update Lead Error:", error);
@@ -28,15 +56,15 @@ const endConversation = async (req, res) => {
   }
 };
 
-
-
 const createConversation = async (req, res) => {
   try {
     const { conclusion, isProfitable = null, followUpDate, date } = req.body;
     const { leadId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(leadId)) {
-      return res.status(400).json({ success: false, message: "Invalid lead ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid lead ID" });
     }
 
     const conversation = new Conversation({
@@ -77,8 +105,8 @@ const getAllConversations = async (req, res) => {
     };
 
     if (!isManager) {
-  filter.addedBy = user._id; // works if already ObjectId, which is usually true
-}
+      filter.addedBy = user._id; // works if already ObjectId, which is usually true
+    }
 
     const conversations = await Conversation.find(filter)
       .sort({ date: -1 })
@@ -97,7 +125,6 @@ const getAllConversations = async (req, res) => {
   }
 };
 
-
 const getConversationsByLead = async (req, res) => {
   try {
     const { leadId } = req.params;
@@ -109,7 +136,7 @@ const getConversationsByLead = async (req, res) => {
       });
     }
 
-    const lead = await Lead.findById(leadId).lean(); 
+    const lead = await Lead.findById(leadId).lean();
     if (!lead) {
       return res.status(404).json({
         success: false,
@@ -119,17 +146,17 @@ const getConversationsByLead = async (req, res) => {
 
     const isManager = req.user?.role === "manager";
 
- const baseFilter = {
-  _id: { $in: lead.conversations },
-};
+    const baseFilter = {
+      _id: { $in: lead.conversations },
+    };
 
-const workerFilter = {
-  ...baseFilter,
-  isDeleted: false,
-  addedBy: req.user._id,
-};
+    const workerFilter = {
+      ...baseFilter,
+      isDeleted: false,
+      addedBy: req.user._id,
+    };
 
-const finalFilter = isManager ? baseFilter : workerFilter;
+    const finalFilter = isManager ? baseFilter : workerFilter;
 
     const conversations = await Conversation.find(finalFilter)
       .sort({ date: -1 })
@@ -137,9 +164,9 @@ const finalFilter = isManager ? baseFilter : workerFilter;
 
     res.status(200).json({
       success: true,
-       id: lead._id,
-        followUpDates: lead.followUpDates,
-        notes: lead.notes,
+      id: lead._id,
+      followUpDates: lead.followUpDates,
+      notes: lead.notes,
       data: conversations,
     });
   } catch (error) {
@@ -157,7 +184,9 @@ const getConversationsByWorker = async (req, res) => {
     const loggedInUser = req.user;
 
     if (!mongoose.Types.ObjectId.isValid(workerId)) {
-      return res.status(400).json({ success: false, message: "Invalid worker ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid worker ID" });
     }
 
     const isManager = loggedInUser?.role === "manager";
@@ -165,7 +194,9 @@ const getConversationsByWorker = async (req, res) => {
 
     // Only allow manager or the same worker
     if (!isManager && !isSelf) {
-      return res.status(403).json({ success: false, message: "Unauthorized access" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized access" });
     }
 
     const filter = {
@@ -178,18 +209,11 @@ const getConversationsByWorker = async (req, res) => {
       .lean();
 
     res.status(200).json({ success: true, data: conversations });
-
   } catch (error) {
     console.error("Get Conversations By Worker Error:", error);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-
-
-
-
-
-
 
 const updateConversation = async (req, res) => {
   try {
@@ -203,7 +227,30 @@ const updateConversation = async (req, res) => {
     );
 
     if (!updated) {
-      return res.status(404).json({ success: false, message: "Conversation not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Conversation not found" });
+    }
+    // Fetch all managers
+    const managers = await Manager.find({}, "_id");
+
+    // Prepare base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Updated",
+      message: `A conversation has been updated (ID: ${updated._id}).`,
+      type: "update",
+      relatedTo: updated._id,
+      relatedToType: "Conversation",
+    };
+
+    // Send to each manager
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
+      });
     }
 
     res.status(200).json({ success: true, data: updated });
@@ -217,11 +264,37 @@ const deleteConversation = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const convo = await Conversation.findByIdAndUpdate(id,{ isDeleted: true, deletedBy: req.user._id },{ new: true });
+    const convo = await Conversation.findByIdAndUpdate(
+      id,
+      { isDeleted: true, deletedBy: req.user._id },
+      { new: true }
+    );
     if (!convo) {
-      return res.status(404).json({ success: false, message: "Conversation not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Conversation not found" });
     }
+    // Fetch all managers
+    const managers = await Manager.find({}, "_id");
 
+    // Prepare base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Updated",
+      message: `A conversation has been deleted (ID: ${convo._id}).`,
+      type: "delete",
+      relatedTo: convo._id,
+      relatedToType: "Conversation",
+    };
+
+    // Send to each manager
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
+      });
+    }
     res.status(200).json({ success: true, message: "Conversation deleted" });
   } catch (error) {
     console.error("Delete Conversation Error:", error);
@@ -229,10 +302,9 @@ const deleteConversation = async (req, res) => {
   }
 };
 
-
 export {
-    createConversation,
-    getAllConversations,
+  createConversation,
+  getAllConversations,
   getConversationsByLead,
   getConversationsByWorker,
   endConversation,

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const categorySchema = new mongoose.Schema({
   title: {
@@ -12,7 +12,7 @@ const categorySchema = new mongoose.Schema({
   },
   color: {
     type: String,
-    default: '#000000', // optional: default color if not provided
+    default: "#000000", // optional: default color if not provided
   },
   createdAt: {
     type: Date,
@@ -20,5 +20,5 @@ const categorySchema = new mongoose.Schema({
   },
 });
 
-const Category = mongoose.model('Category', categorySchema);
+const Category = mongoose.model("Category", categorySchema);
 export default Category;

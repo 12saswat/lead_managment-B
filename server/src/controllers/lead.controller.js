@@ -3,6 +3,7 @@ import Category from "../models/categories.model.js";
 import Document from "../models/document.model.js";
 import Conversation from "../models/conversation.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {User } from "../models/user.models.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import mongoose from "mongoose";
@@ -762,24 +763,22 @@ const addFollowUp = async (req, res) => {
       });
     }
 
-    const { followUpDate, conclusion } = req.body;
+    const { followUpDate, conclusion , isProfitable = null } = req.body;
 
-    if (
-      !followUpDate ||
-      followUpDate.trim() === "" ||
-      !conclusion ||
-      conclusion.trim() === ""
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: { message: "Follow-up date and notes are required" },
-      });
-    }
+   if (
+  (!isProfitable && (!followUpDate || followUpDate.trim() === "")) ||
+  !conclusion || conclusion.trim() === ""
+) {
+  return res.status(400).json({
+    success: false,
+    error: { message: "Conclusion and either follow-up date or profitability are required" },
+  });
+}
 
     const followUpDateObj = new Date(followUpDate);
     const now = new Date();
 
-    if (isNaN(followUpDateObj.getTime()) || followUpDateObj <= now) {
+    if (followUpDate && (isNaN(followUpDateObj.getTime()) || followUpDateObj <= now)) {
       return res.status(400).json({
         success: false,
         error: { message: "Follow-up date must be in the future" },
@@ -787,9 +786,12 @@ const addFollowUp = async (req, res) => {
     }
 
     const newConversation = new Conversation({
-      date: followUpDate,
+      date: now,
+      lead: lead._id,
       conclusion: conclusion,
-      addedBy: lead._id,
+       user: req.user._id,
+      isProfitable,
+      addedBy: req.user._id,
     });
 
     await newConversation.save();
@@ -798,7 +800,7 @@ const addFollowUp = async (req, res) => {
     if (!Array.isArray(lead.followUpDates)) lead.followUpDates = [];
 
     lead.conversations.push(newConversation._id);
-    lead.status = "follow-up";
+    lead.status = typeof isProfitable === "boolean" ? "closed" : "follow-up";
     lead.lastContact = now;
     lead.followUpDates.push(followUpDate);
 
