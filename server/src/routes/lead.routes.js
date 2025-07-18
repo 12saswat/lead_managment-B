@@ -14,7 +14,6 @@ import checkAuth from "../middlewares/checkAuth.middleware.js";
 import authorizeRoles from "../middlewares/authorizeRoles.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { xlUpload } from "../middlewares/xlMulter.middleware.js";
-import {getLeadsByCategory} from "../controllers/category.controller.js";
 
 const leadRouter = express.Router();
 
@@ -43,6 +42,5 @@ leadRouter.post(
 );
 
 leadRouter.post("/:id/follow-up", checkAuth, addFollowUp);
-leadRouter.post("/endconvo/:Id", checkAuth, endConversation);
-leadRouter.get("/category/:id", checkAuth, getLeadsByCategory);
+leadRouter.put("/endconvo/:id", checkAuth, endConversation);
 export default leadRouter;

@@ -6,11 +6,15 @@ import {
   deleteCampaign,
   getAllCampaigns,
   getCampaignById,
+  sendCampaign,
+  updateCampaign,
 } from "../controllers/campaign.controller.js";
 
 const campaignrouter = express.Router();
 
 campaignrouter.post("/create", checkAuth, createCampaign);
+campaignrouter.post("/send/:campaignId", checkAuth, sendCampaign);
+campaignrouter.put("/update/:campaignId", checkAuth, updateCampaign);
 campaignrouter.get("/all", checkAuth, getAllCampaigns);
 campaignrouter.get("/:id", checkAuth, getCampaignById);
 campaignrouter.delete("/delete/:id", checkAuth, deleteCampaign);
