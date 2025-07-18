@@ -1,4 +1,5 @@
 import Category  from '../models/categories.model.js';
+import Lead from '../models/lead.model.js';
 
 // Create a new category
 const createCategory = async (req, res) => {
@@ -125,6 +126,32 @@ const deleteCategory = async (req, res) => {
         });
     }
 };
+const getLeadsByCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const leads = await Lead.find({ category: id })
+    // .populate('category', 'title color');
+
+    if (!leads || leads.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No leads found for this category',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message,
+    });
+  }
+};
 
 
-export { createCategory, getAllCategories, getCategoryById, updateCategory, deleteCategory };
+export { createCategory, getAllCategories, getCategoryById, updateCategory, deleteCategory ,getLeadsByCategory};
