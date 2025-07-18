@@ -3,7 +3,7 @@ import Category from "../models/categories.model.js";
 import Document from "../models/document.model.js";
 import Conversation from "../models/conversation.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import {User } from "../models/user.models.js";
+import { User } from "../models/user.models.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import mongoose from "mongoose";
@@ -275,7 +275,7 @@ const getLeadById = async (req, res) => {
         select: "url description size createdAt _id",
       })
       .populate({
-        path: "Conversations",
+        path: "conversations",
         select: "date conclusion isProfitable followUpDate addedBy _id",
       })
       .lean();
@@ -329,7 +329,7 @@ const getLeadById = async (req, res) => {
         size: doc.size,
         createdAt: doc.createdAt,
       })),
-      conversations: (lead.Conversations || []).map((conv) => ({
+      conversations: (lead.conversations || []).map((conv) => ({
         id: conv._id,
         date: conv.date,
         conclusion: conv.conclusion,
@@ -375,6 +375,25 @@ const updateLeadById = async (req, res) => {
       followUpDates,
       lastContact,
     } = req.body;
+
+    if (
+      !name &&
+      !email &&
+      !phoneNumber &&
+      !category &&
+      !position &&
+      !leadSource &&
+      !notes &&
+      !status &&
+      !priority
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "At least one field is required to update the lead",
+        },
+      });
+    }
 
     if (!leadId) {
       return res.status(400).json({
@@ -666,6 +685,7 @@ const bulkUploadLeads = async (req, res) => {
           email: row.email.toLowerCase(),
           phoneNumber: row.phoneNumber || null,
           category,
+          assignedTo: assignedTo || null,
           position: row.position || "",
           leadSource: row.leadSource || "",
           notes: row.notes || "",
@@ -763,22 +783,29 @@ const addFollowUp = async (req, res) => {
       });
     }
 
-    const { followUpDate, conclusion , isProfitable = null } = req.body;
+    const { followUpDate, conclusion, isProfitable = null } = req.body;
 
-   if (
-  (!isProfitable && (!followUpDate || followUpDate.trim() === "")) ||
-  !conclusion || conclusion.trim() === ""
-) {
-  return res.status(400).json({
-    success: false,
-    error: { message: "Conclusion and either follow-up date or profitability are required" },
-  });
-}
+    if (
+      (!isProfitable && (!followUpDate || followUpDate.trim() === "")) ||
+      !conclusion ||
+      conclusion.trim() === ""
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message:
+            "Conclusion and either follow-up date or profitability are required",
+        },
+      });
+    }
 
     const followUpDateObj = new Date(followUpDate);
     const now = new Date();
 
-    if (followUpDate && (isNaN(followUpDateObj.getTime()) || followUpDateObj <= now)) {
+    if (
+      followUpDate &&
+      (isNaN(followUpDateObj.getTime()) || followUpDateObj <= now)
+    ) {
       return res.status(400).json({
         success: false,
         error: { message: "Follow-up date must be in the future" },
@@ -789,7 +816,7 @@ const addFollowUp = async (req, res) => {
       date: now,
       lead: lead._id,
       conclusion: conclusion,
-       user: req.user._id,
+      user: req.user._id,
       isProfitable,
       addedBy: req.user._id,
     });
