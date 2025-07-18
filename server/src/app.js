@@ -39,7 +39,7 @@ try {
   app.use("/api/v1/worker", workerRouter);
 } catch (error) {
   console.log("File: app.js", "Line 41:", error);
-  throw new Error("Error Occured in Routes", error);
+  throw new Error("Error Occured in worker Routes", error);
 }
 // Import Manager Routes and State it's Functions in Try Catch Block
 import managerRouter from "./routes/manager.routes.js";
@@ -62,14 +62,14 @@ try {
   app.use("/api/v1/lead", leadRouter);
 } catch (error) {
   console.log("File: app.js", "Line 64:", error);
-  throw new Error("Error occurred in seed routes", { cause: error });
+  throw new Error("Error occurred in lead routes", { cause: error });
 }
 import categoryRouter from "./routes/category.routes.js";
 try {
   app.use("/api/v1/category", categoryRouter);
 } catch (error) {
   console.log("File: app.js", "Line 71:", error);
-  throw new Error("Error occurred in seed routes", { cause: error });
+  throw new Error("Error occurred in catagory routes", { cause: error });
 }
 
 import conversationRouter from "./routes/conversation.routes.js";
@@ -85,6 +85,14 @@ try {
   app.use("/api/v1/notification", notificationRouter);
 } catch (error) {
   console.log("File: app.js", "Line 87:", error);
+  throw new Error("Error occurred in notification routes", { cause: error });
+}
+
+import campaignrouter from "./routes/campaign.routes.js";
+try {
+  app.use("/api/v1/campaign", campaignrouter);
+} catch (error) {
+  console.log("File: app.js", "Line 95:", error);
   throw new Error("Error occurred in conversation routes", { cause: error });
 }
 
