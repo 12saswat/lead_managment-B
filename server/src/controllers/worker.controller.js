@@ -335,4 +335,5 @@ const resetPassword = async (req, res) => {
     });
   }
 };
+
 export { registerWorker, loginWorker, sendOtp, verifyOtp, resetPassword , getWorkers};

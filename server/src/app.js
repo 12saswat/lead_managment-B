@@ -96,4 +96,12 @@ try {
   throw new Error("Error occurred in conversation routes", { cause: error });
 }
 
+import currentUserRouter from "./routes/current.routers.js";
+try {
+  app.use("/api/v1/user", currentUserRouter);
+} catch (error) {
+  console.log("File: app.js", "Line 95:", error);
+  throw new Error("Error occurred in conversation routes", { cause: error });
+}
+
 export default app;

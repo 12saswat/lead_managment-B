@@ -52,12 +52,10 @@ const leadSchema = new mongoose.Schema({
     enum: ["high", "medium", "low"],
     default: "medium",
   },
-  followUpDates: [
-    {
-      type: [String],
-      default: [],
-    },
-  ],
+  followUpDates: {
+    type: [String],
+    default: [],
+  },
   lastContact: {
     type: Date,
   },
