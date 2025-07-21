@@ -4,7 +4,8 @@ import { Manager } from "../models/manager.model.js";
 
 const checkAuth = async (req, res, next) => {
   try {
-    const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+    const token =
+      req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({
@@ -39,8 +40,8 @@ const checkAuth = async (req, res, next) => {
 
     // Attach a normalized user object with role
     req.user = {
-     _id: user._id,
-     role, // 'manager' or 'worker'
+      _id: user._id,
+      role, // 'manager' or 'worker'
     };
 
     next();

@@ -63,6 +63,9 @@ const endConversation = async (req, res) => {
     lead.status = "closed";
     lead.isProfitable = isProfitable;
     lead.lastContact = now;
+    if (Array.isArray(lead.followUpDates)) {
+      lead.followUpDates = lead.followUpDates.flat().map(String);
+    }
 
     await lead.save();
     let recipientType = null;
@@ -81,17 +84,37 @@ const endConversation = async (req, res) => {
         recipient: req.user._id,
         recipientType,
         sentTo: lead.assignedTo,
-        title: "Lead Closed",
+        title: "conversation ended",
         message: `The lead "${lead.name}" has been closed with a conclusion.`,
-        type: "lead_closed",
+        type: "end-conversation",
         relatedTo: lead._id,
         relatedToType: "Lead",
+      });
+    }
+    const managers = await Manager.find({}, "_id");
+
+    // Prepare base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Updated",
+      message: `The lead "${lead.name}" has been closed with a conclusion.`,
+      type: "end-conversation",
+      relatedTo: lead._id,
+      relatedToType: "Conversation",
+    };
+
+    // Send to each manager
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Lead successfully closed with conclusion",
+      message: "Conversation successfully closed with conclusion",
       data: {
         leadId: lead._id,
         conversation: newConversation,

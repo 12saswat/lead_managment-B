@@ -114,6 +114,7 @@ const createLead = async (req, res) => {
     });
 
     // If the lead is assigned to someone, send a notification
+    // Notify the assigned user (if any)
     if (assignedTo) {
       let recipientType = null;
       const isWorker = await Worker.exists({ _id: assignedTo });
@@ -126,19 +127,38 @@ const createLead = async (req, res) => {
         }
       }
 
-      const notificationPayload = {
-        recipient: req.user._id,
-        recipientType,
-        sentTo: assignedTo,
-        title: "New Lead Assigned",
-        message: `You have been assigned a new lead: ${newLead.name}`,
-        type: "assignment",
-        relatedTo: newLead._id,
-        relatedToType: "Lead",
-      };
-
-      await sendNotification(notificationPayload);
+      if (recipientType) {
+        await sendNotification({
+          recipient: req.user._id,
+          recipientType,
+          sentTo: assignedTo,
+          title: "New Lead Assigned",
+          message: `You have been assigned a new lead: ${newLead.name}`,
+          type: "lead",
+          relatedTo: newLead._id,
+          relatedToType: "Lead",
+        });
+      }
     }
+
+    // Notify all managers
+    const allManagers = await Manager.find({}, "_id");
+
+    await Promise.all(
+      allManagers.map((manager) =>
+        sendNotification({
+          recipient: req.user._id,
+          recipientType: "manager",
+          sentTo: manager._id,
+          title: "New Lead Created",
+          message: `A new lead "${newLead.name}" has been created.`,
+          type: "lead",
+          relatedTo: newLead._id,
+          relatedToType: "Lead",
+        })
+      )
+    );
+
     return res.status(201).json({
       success: true,
       response: {
@@ -236,6 +256,32 @@ const getAllLeads = async (req, res) => {
       success: false,
       error: {
         message: "Internal Server error",
+      },
+    });
+  }
+};
+
+const getLeads = async (req, res) => {
+  try {
+    const leads = await Lead.find({ isDeleted: false });
+    if (!leads || leads.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: "No leads found",
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
       },
     });
   }
@@ -500,7 +546,7 @@ const updateLeadById = async (req, res) => {
 
     await Lead.findByIdAndUpdate(leadId, updateData, { new: true });
 
-    // Send notification if lead is assigned
+    // Send notification to the assigned user (if assignedTo exists)
     if (existingLead.assignedTo) {
       let recipientType = null;
       const isWorker = await Worker.exists({ _id: existingLead.assignedTo });
@@ -515,19 +561,37 @@ const updateLeadById = async (req, res) => {
         }
       }
 
-      const notificationPayload = {
-        recipient: req.user._id,
-        recipientType,
-        sentTo: existingLead.assignedTo,
-        title: "Lead Updated",
-        message: `The lead "${existingLead.name}" assigned to you has been updated.`,
-        type: "update",
-        relatedTo: existingLead._id,
-        relatedToType: "Lead",
-      };
-
-      await sendNotification(notificationPayload);
+      if (recipientType) {
+        await sendNotification({
+          recipient: req.user._id,
+          recipientType,
+          sentTo: existingLead.assignedTo,
+          title: "Lead Updated",
+          message: `The lead "${existingLead.name}" assigned to you has been updated.`,
+          type: "update",
+          relatedTo: existingLead._id,
+          relatedToType: "Lead",
+        });
+      }
     }
+
+    // Send notification to all managers
+    const allManagers = await Manager.find({}, "_id");
+
+    await Promise.all(
+      allManagers.map((manager) =>
+        sendNotification({
+          recipient: req.user._id,
+          recipientType: "manager",
+          sentTo: manager._id,
+          title: "Lead Updated",
+          message: `The lead "${existingLead.name}" has been updated.`,
+          type: "update",
+          relatedTo: existingLead._id,
+          relatedToType: "Lead",
+        })
+      )
+    );
 
     return res.status(200).json({
       success: true,
@@ -730,6 +794,26 @@ const bulkUploadLeads = async (req, res) => {
 
       await sendNotification(notificationPayload);
     }
+    const managers = await Manager.find({}, "_id");
+
+    // Prepare base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Updated",
+      message: `A conversation has been updated (ID: ${updated._id}).`,
+      type: "update",
+      relatedTo: updated._id,
+      relatedToType: "Conversation",
+    };
+
+    // Send to each manager
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
+      });
+    }
 
     // Delete uploaded file after processing
     fs.unlink(req.file.path, () => {});
@@ -869,6 +953,26 @@ const addFollowUp = async (req, res) => {
         relatedToType: "Lead",
       });
     }
+    const managers = await Manager.find({}, "_id");
+
+    // Prepare base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Started",
+      message: "A conversation has been initiated for lead",
+      type: "update",
+      relatedTo: lead._id,
+      relatedToType: "Conversation",
+    };
+
+    // Send to each manager
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -897,4 +1001,5 @@ export {
   deleteLead,
   bulkUploadLeads,
   addFollowUp,
+  getLeads,
 };

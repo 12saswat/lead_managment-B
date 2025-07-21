@@ -7,6 +7,7 @@ import {
   deleteLead,
   bulkUploadLeads,
   addFollowUp,
+  getLeads,
 } from "../controllers/lead.controller.js";
 import { endConversation } from "../controllers/consversation.controller.js";
 import { assignedTo } from "../controllers/assignedTo.controller.js";
@@ -24,7 +25,10 @@ leadRouter.post(
   createLead
 );
 
+// get leads by req.query
 leadRouter.get("/getalllead", checkAuth, getAllLeads);
+// all leads
+leadRouter.get("/leads", checkAuth, getLeads);
 leadRouter.get("/getlead/:id", checkAuth, getLeadById);
 leadRouter.put(
   "/updateleads/:id",
