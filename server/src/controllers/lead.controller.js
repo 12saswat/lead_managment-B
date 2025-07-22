@@ -926,7 +926,6 @@ const addFollowUp = async (req, res) => {
       user: req.user._id,
       isProfitable,
       addedBy: req.user._id,
-      status: "new",
     });
 
     await newConversation.save();
