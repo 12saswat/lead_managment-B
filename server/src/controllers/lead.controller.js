@@ -263,7 +263,7 @@ const getAllLeads = async (req, res) => {
 
 const getLeads = async (req, res) => {
   try {
-    const leads = await Lead.find({ isDeleted: false });
+    const leads = await Lead.find({ isDeleted: false }).populate("category");
     if (!leads || leads.length === 0) {
       return res.status(404).json({
         success: false,
@@ -272,10 +272,19 @@ const getLeads = async (req, res) => {
         },
       });
     }
+    const formattedLeads = leads.map((lead) => ({
+      ...lead.toObject(),
+      category: lead.category && {
+        id: lead.category._id,
+        title: lead.category.title,
+        color: lead.category.color,
+        description: lead.category.description,
+      },
+    }));
 
     res.status(200).json({
       success: true,
-      data: leads,
+      data: formattedLeads,
     });
   } catch (error) {
     res.status(500).json({
