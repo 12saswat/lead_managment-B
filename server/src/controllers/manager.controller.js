@@ -1,12 +1,11 @@
 import { Manager } from "../models/manager.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import {generateEncryptedKey,generateRoleToken,} from "../utils/RoleToken.js"; 
+import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
 import generateOtp from "../utils/generateOtp.js";
 
-
- const loginManager = async (req, res) => {
+const loginManager = async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -22,28 +21,38 @@ import generateOtp from "../utils/generateOtp.js";
 
     const token = manager.generateAccessToken();
 
- // Generate a JWT token containing the manger's role
+    // Generate a JWT token containing the manger's role
     const roleToken = generateRoleToken("manager", process.env.MAN_SUFFIX);
 
-  // Generate a randomized cookie key (prefixed with '002') for storing the role token
-  const key = generateEncryptedKey(process.env.MAN_KEY_NAME); // '002'
+    // Generate a randomized cookie key (prefixed with '002') for storing the role token
+    const key = generateEncryptedKey(process.env.MAN_KEY_NAME); // '002'
 
-     // Set cookies (can add httpOnly, secure, sameSite as needed)
+    const cookiesOption = {
+      sameSite: "strict",
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "development" ? false : true,
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      domain:
+        process.env.NODE_ENV === "development" ? "localhost" : ".indibus.net",
+    };
+    // Set cookies (can add httpOnly, secure, sameSite as needed)
     return res
       .status(200)
-      .cookie("token", token)
-      .cookie(key, roleToken)
+      .cookie("token", token, cookiesOption)
+      .cookie(key, roleToken, cookiesOption)
       .json({
-       success: true,
-    message: "Login successful",
-    token,
-    manager: {
-    id: manager._id,
-    name: manager.name,
-    email: manager.email,
-    role: manager.role,
-    createdAt: manager.createdAt,
-      }, });
+        success: true,
+        message: "Login successful",
+        token,
+        manager: {
+          id: manager._id,
+          name: manager.name,
+          email: manager.email,
+          role: manager.role,
+          createdAt: manager.createdAt,
+        },
+      });
   } catch (error) {
     console.error("Error in loginManager:", error);
     res.status(500).json({ message: "Login failed", error: error.message });
@@ -94,7 +103,7 @@ const sendOTP = async (req, res) => {
       success: true,
       response: {
         message: "OTP sent successfully",
-         //otp: otp,                    // Optional: Include OTP in response for testing purposes
+        //otp: otp,                    // Optional: Include OTP in response for testing purposes
       },
       data: {
         managerId: manager._id,
@@ -229,5 +238,4 @@ const resetPASS = async (req, res) => {
     });
   }
 };
-export {loginManager, sendOTP, verifyOTP, resetPASS };
-
+export { loginManager, sendOTP, verifyOTP, resetPASS };

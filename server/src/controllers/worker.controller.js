@@ -99,7 +99,7 @@ const loginWorker = async (req, res) => {
     // Generate a randomized cookie key (prefixed with '001') for storing the role token
     const key = generateEncryptedKey(process.env.WRK_KEY_NAME); // '001'
 
-     const cookiesOption = {
+    const cookiesOption = {
       sameSite: "strict",
       httpOnly: false,
       secure: process.env.NODE_ENV === "development" ? false : true,
@@ -111,8 +111,8 @@ const loginWorker = async (req, res) => {
 
     return res
       .status(200)
-      .cookie("token", token,cookiesOption)
-      .cookie(key, roleToken,cookiesOption)
+      .cookie("token", token, cookiesOption)
+      .cookie(key, roleToken, cookiesOption)
       .json({
         success: true,
         response: {
@@ -336,4 +336,11 @@ const resetPassword = async (req, res) => {
   }
 };
 
-export { registerWorker, loginWorker, sendOtp, verifyOtp, resetPassword , getWorkers};
+export {
+  registerWorker,
+  loginWorker,
+  sendOtp,
+  verifyOtp,
+  resetPassword,
+  getWorkers,
+};
