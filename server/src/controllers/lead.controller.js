@@ -213,6 +213,13 @@ const getAllLeads = async (req, res) => {
         color: lead.category.color,
         description: lead.category.description,
       },
+      documents: (lead.documents || []).map((doc) => ({
+        id: doc._id,
+        url: doc.url,
+        description: doc.description,
+        size: doc.size,
+        createdAt: doc.createdAt,
+      })),
       position: lead.position,
       leadSource: lead.leadSource,
       notes: lead.notes,
@@ -355,6 +362,13 @@ const getLeadById = async (req, res) => {
         description: lead.category.description,
         color: lead.category.color,
       },
+      documents: (lead.documents || []).map((doc) => ({
+        id: doc._id,
+        url: doc.url,
+        description: doc.description,
+        size: doc.size,
+        createdAt: doc.createdAt,
+      })),
       position: lead.position,
       leadSource: lead.leadSource,
       notes: lead.notes,
@@ -912,6 +926,7 @@ const addFollowUp = async (req, res) => {
       user: req.user._id,
       isProfitable,
       addedBy: req.user._id,
+      status: "new",
     });
 
     await newConversation.save();
