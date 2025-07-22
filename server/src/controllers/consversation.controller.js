@@ -54,13 +54,13 @@ const endConversation = async (req, res) => {
       isProfitable,
       user: req.user._id,
       addedBy: req.user._id,
+      status: "closed",
     });
 
     await newConversation.save();
 
     if (!Array.isArray(lead.conversations)) lead.conversations = [];
     lead.conversations.push(newConversation._id);
-    lead.status = "closed";
     lead.isProfitable = isProfitable;
     lead.lastContact = now;
     if (Array.isArray(lead.followUpDates)) {

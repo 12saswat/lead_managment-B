@@ -3,6 +3,7 @@ import { Worker } from "../models/worker.models.js";
 import Lead from "../models/lead.model.js";
 import { Campaign } from "../models/campaign.model.js";
 import { Notification } from "../models/notification.model.js";
+import Conversation from "../models/conversation.model.js";
 
 export const userName = async (req, res) => {
   try {
@@ -218,6 +219,43 @@ export const getDashboardData = async (req, res) => {
       .lean();
     console.log("Upcoming Deadlines:", upcomingDeadlines);
 
+
+    // Get All Workers with their performance
+const workers = await Worker.find().select("_id name").lean();
+
+const leaderboardData = await Promise.all(
+  workers.map(async (worker) => {
+    const totalAssignedLeads = await Lead.countDocuments({
+      assignedTo: worker._id,
+      isDeleted: false,
+    });
+
+    const profitableConversations = await Conversation.countDocuments({
+      addedBy: worker._id,
+      isDeleted: false,
+      isProfitable: true,
+    });
+
+    const convertedPercentage = totalAssignedLeads
+      ? ((profitableConversations / totalAssignedLeads) * 100).toFixed(2)
+      : 0;
+
+    return {
+      workerId: worker._id,
+      name: worker.name,
+      totalAssignedLeads,
+      profitableConversations,
+      convertedPercentage: parseFloat(convertedPercentage),
+    };
+  })
+);
+
+// Sort by converted percentage descending
+const sortedLeaderboard = leaderboardData.sort(
+  (a, b) => b.convertedPercentage - a.convertedPercentage
+);
+
+
     res.status(200).json({
       success: true,
       totalLeads,
@@ -230,6 +268,7 @@ export const getDashboardData = async (req, res) => {
       leadsByCategory,
       campaignPerformance,
       upcomingDeadlines,
+      teamLeaderboard: sortedLeaderboard,
     });
   } catch (error) {
     console.error("Dashboard Error:", error);
