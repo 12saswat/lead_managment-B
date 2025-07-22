@@ -3,7 +3,7 @@ import Category from "../models/categories.model.js";
 import Document from "../models/document.model.js";
 import Conversation from "../models/conversation.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import {User } from "../models/user.models.js";
+import { User } from "../models/user.models.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import mongoose from "mongoose";
@@ -114,6 +114,7 @@ const createLead = async (req, res) => {
     });
 
     // If the lead is assigned to someone, send a notification
+    // Notify the assigned user (if any)
     if (assignedTo) {
       let recipientType = null;
       const isWorker = await Worker.exists({ _id: assignedTo });
@@ -126,19 +127,38 @@ const createLead = async (req, res) => {
         }
       }
 
-      const notificationPayload = {
-        recipient: req.user._id,
-        recipientType,
-        sentTo: assignedTo,
-        title: "New Lead Assigned",
-        message: `You have been assigned a new lead: ${newLead.name}`,
-        type: "assignment",
-        relatedTo: newLead._id,
-        relatedToType: "Lead",
-      };
-
-      await sendNotification(notificationPayload);
+      if (recipientType) {
+        await sendNotification({
+          recipient: req.user._id,
+          recipientType,
+          sentTo: assignedTo,
+          title: "New Lead Assigned",
+          message: `You have been assigned a new lead: ${newLead.name}`,
+          type: "lead",
+          relatedTo: newLead._id,
+          relatedToType: "Lead",
+        });
+      }
     }
+
+    // Notify all managers
+    const allManagers = await Manager.find({}, "_id");
+
+    await Promise.all(
+      allManagers.map((manager) =>
+        sendNotification({
+          recipient: req.user._id,
+          recipientType: "manager",
+          sentTo: manager._id,
+          title: "New Lead Created",
+          message: `A new lead "${newLead.name}" has been created.`,
+          type: "lead",
+          relatedTo: newLead._id,
+          relatedToType: "Lead",
+        })
+      )
+    );
+
     return res.status(201).json({
       success: true,
       response: {
@@ -193,6 +213,13 @@ const getAllLeads = async (req, res) => {
         color: lead.category.color,
         description: lead.category.description,
       },
+      documents: (lead.documents || []).map((doc) => ({
+        id: doc._id,
+        url: doc.url,
+        description: doc.description,
+        size: doc.size,
+        createdAt: doc.createdAt,
+      })),
       position: lead.position,
       leadSource: lead.leadSource,
       notes: lead.notes,
@@ -241,6 +268,41 @@ const getAllLeads = async (req, res) => {
   }
 };
 
+const getLeads = async (req, res) => {
+  try {
+    const leads = await Lead.find({ isDeleted: false }).populate("category");
+    if (!leads || leads.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: "No leads found",
+        },
+      });
+    }
+    const formattedLeads = leads.map((lead) => ({
+      ...lead.toObject(),
+      category: lead.category && {
+        id: lead.category._id,
+        title: lead.category.title,
+        color: lead.category.color,
+        description: lead.category.description,
+      },
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formattedLeads,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
+      },
+    });
+  }
+};
+
 const getLeadById = async (req, res) => {
   try {
     const leadId = req.params.id;
@@ -275,7 +337,7 @@ const getLeadById = async (req, res) => {
         select: "url description size createdAt _id",
       })
       .populate({
-        path: "Conversations",
+        path: "conversations",
         select: "date conclusion isProfitable followUpDate addedBy _id",
       })
       .lean();
@@ -300,6 +362,13 @@ const getLeadById = async (req, res) => {
         description: lead.category.description,
         color: lead.category.color,
       },
+      documents: (lead.documents || []).map((doc) => ({
+        id: doc._id,
+        url: doc.url,
+        description: doc.description,
+        size: doc.size,
+        createdAt: doc.createdAt,
+      })),
       position: lead.position,
       leadSource: lead.leadSource,
       notes: lead.notes,
@@ -329,7 +398,7 @@ const getLeadById = async (req, res) => {
         size: doc.size,
         createdAt: doc.createdAt,
       })),
-      conversations: (lead.Conversations || []).map((conv) => ({
+      conversations: (lead.conversations || []).map((conv) => ({
         id: conv._id,
         date: conv.date,
         conclusion: conv.conclusion,
@@ -375,6 +444,25 @@ const updateLeadById = async (req, res) => {
       followUpDates,
       lastContact,
     } = req.body;
+
+    if (
+      !name &&
+      !email &&
+      !phoneNumber &&
+      !category &&
+      !position &&
+      !leadSource &&
+      !notes &&
+      !status &&
+      !priority
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "At least one field is required to update the lead",
+        },
+      });
+    }
 
     if (!leadId) {
       return res.status(400).json({
@@ -481,7 +569,7 @@ const updateLeadById = async (req, res) => {
 
     await Lead.findByIdAndUpdate(leadId, updateData, { new: true });
 
-    // Send notification if lead is assigned
+    // Send notification to the assigned user (if assignedTo exists)
     if (existingLead.assignedTo) {
       let recipientType = null;
       const isWorker = await Worker.exists({ _id: existingLead.assignedTo });
@@ -496,19 +584,37 @@ const updateLeadById = async (req, res) => {
         }
       }
 
-      const notificationPayload = {
-        recipient: req.user._id,
-        recipientType,
-        sentTo: existingLead.assignedTo,
-        title: "Lead Updated",
-        message: `The lead "${existingLead.name}" assigned to you has been updated.`,
-        type: "update",
-        relatedTo: existingLead._id,
-        relatedToType: "Lead",
-      };
-
-      await sendNotification(notificationPayload);
+      if (recipientType) {
+        await sendNotification({
+          recipient: req.user._id,
+          recipientType,
+          sentTo: existingLead.assignedTo,
+          title: "Lead Updated",
+          message: `The lead "${existingLead.name}" assigned to you has been updated.`,
+          type: "update",
+          relatedTo: existingLead._id,
+          relatedToType: "Lead",
+        });
+      }
     }
+
+    // Send notification to all managers
+    const allManagers = await Manager.find({}, "_id");
+
+    await Promise.all(
+      allManagers.map((manager) =>
+        sendNotification({
+          recipient: req.user._id,
+          recipientType: "manager",
+          sentTo: manager._id,
+          title: "Lead Updated",
+          message: `The lead "${existingLead.name}" has been updated.`,
+          type: "update",
+          relatedTo: existingLead._id,
+          relatedToType: "Lead",
+        })
+      )
+    );
 
     return res.status(200).json({
       success: true,
@@ -666,6 +772,7 @@ const bulkUploadLeads = async (req, res) => {
           email: row.email.toLowerCase(),
           phoneNumber: row.phoneNumber || null,
           category,
+          assignedTo: assignedTo || null,
           position: row.position || "",
           leadSource: row.leadSource || "",
           notes: row.notes || "",
@@ -709,6 +816,26 @@ const bulkUploadLeads = async (req, res) => {
       };
 
       await sendNotification(notificationPayload);
+    }
+    const managers = await Manager.find({}, "_id");
+
+    // Prepare base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Updated",
+      message: `A conversation has been updated (ID: ${updated._id}).`,
+      type: "update",
+      relatedTo: updated._id,
+      relatedToType: "Conversation",
+    };
+
+    // Send to each manager
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
+      });
     }
 
     // Delete uploaded file after processing
@@ -763,22 +890,29 @@ const addFollowUp = async (req, res) => {
       });
     }
 
-    const { followUpDate, conclusion , isProfitable = null } = req.body;
+    const { followUpDate, conclusion, isProfitable = null } = req.body;
 
-   if (
-  (!isProfitable && (!followUpDate || followUpDate.trim() === "")) ||
-  !conclusion || conclusion.trim() === ""
-) {
-  return res.status(400).json({
-    success: false,
-    error: { message: "Conclusion and either follow-up date or profitability are required" },
-  });
-}
+    if (
+      (!isProfitable && (!followUpDate || followUpDate.trim() === "")) ||
+      !conclusion ||
+      conclusion.trim() === ""
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message:
+            "Conclusion and either follow-up date or profitability are required",
+        },
+      });
+    }
 
     const followUpDateObj = new Date(followUpDate);
     const now = new Date();
 
-    if (followUpDate && (isNaN(followUpDateObj.getTime()) || followUpDateObj <= now)) {
+    if (
+      followUpDate &&
+      (isNaN(followUpDateObj.getTime()) || followUpDateObj <= now)
+    ) {
       return res.status(400).json({
         success: false,
         error: { message: "Follow-up date must be in the future" },
@@ -789,9 +923,10 @@ const addFollowUp = async (req, res) => {
       date: now,
       lead: lead._id,
       conclusion: conclusion,
-       user: req.user._id,
+      user: req.user._id,
       isProfitable,
       addedBy: req.user._id,
+      status: "new",
     });
 
     await newConversation.save();
@@ -842,6 +977,26 @@ const addFollowUp = async (req, res) => {
         relatedToType: "Lead",
       });
     }
+    const managers = await Manager.find({}, "_id");
+
+    // Prepare base notification payload
+    const notificationPayload = {
+      recipient: req.user._id,
+      recipientType: req.user.role,
+      title: "Conversation Started",
+      message: "A conversation has been initiated for lead",
+      type: "update",
+      relatedTo: lead._id,
+      relatedToType: "Conversation",
+    };
+
+    // Send to each manager
+    for (const manager of managers) {
+      await sendNotification({
+        ...notificationPayload,
+        sentTo: manager._id,
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -870,4 +1025,5 @@ export {
   deleteLead,
   bulkUploadLeads,
   addFollowUp,
+  getLeads,
 };

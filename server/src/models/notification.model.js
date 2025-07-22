@@ -25,10 +25,12 @@ const notificationSchema = new mongoose.Schema(
         "assignment",
         "conversation",
         "lead",
+        "new-lead",
         "campaign",
         "follow-up",
         "update",
         "delete",
+        "end-conversation",
       ],
     },
     isRead: {
