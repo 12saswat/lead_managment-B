@@ -10,7 +10,6 @@ import mongoose from "mongoose";
 import { sendNotification } from "../utils/sendNotification.js";
 import { Manager } from "../models/manager.model.js";
 import { Worker } from "../models/worker.models.js";
-
 const createLead = async (req, res) => {
   try {
     const {
@@ -270,7 +269,12 @@ const getAllLeads = async (req, res) => {
 
 const getLeads = async (req, res) => {
   try {
-    const leads = await Lead.find({ isDeleted: false }).populate("category");
+    const leads = await Lead.find({ isDeleted: false }).populate("category")
+    .populate({
+        path: "assignedTo",
+        model: "Worker",
+        select: "name _id",
+      });
     if (!leads || leads.length === 0) {
       return res.status(404).json({
         success: false,
@@ -286,6 +290,10 @@ const getLeads = async (req, res) => {
         title: lead.category.title,
         color: lead.category.color,
         description: lead.category.description,
+      },
+      assignedTo: lead.assignedTo && {
+        id: lead.assignedTo._id,
+        name: lead.assignedTo.name,
       },
     }));
 
