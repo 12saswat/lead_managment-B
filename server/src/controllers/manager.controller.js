@@ -242,11 +242,9 @@ const resetPASS = async (req, res) => {
       },
     });
   }
-}; 
+};
 
-
-
- const getDashboardData = async (req, res) => {
+const getDashboardData = async (req, res) => {
   try {
     const { startDate, endDate } = req.body;
     const userId = req.user._id;
@@ -256,21 +254,20 @@ const resetPASS = async (req, res) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999); // Set end date to end of the day
-    const dateFilter = startDate && endDate
-  ? { createdAt: { $gte: start, $lte: end } }
-  : {};
+    const dateFilter =
+      startDate && endDate ? { createdAt: { $gte: start, $lte: end } } : {};
     // Total leads
     const totalLeads = await Lead.countDocuments({
       ...filter,
       isDeleted: false,
-      ...dateFilter,      // datefilter
+      ...dateFilter, // datefilter
     });
 
     // Engaged leads (
     const engagedLeads = await Lead.countDocuments({
       ...filter,
       isDeleted: false,
-      ...dateFilter,    // date filter
+      ...dateFilter, // date filter
       conversations: { $exists: true, $not: { $size: 0 } },
     });
 
@@ -316,7 +313,7 @@ const resetPASS = async (req, res) => {
         $match: {
           ...filter,
           isDeleted: false,
-           ...dateFilter,   // date filter
+          ...dateFilter, // date filter
         },
       },
       {
@@ -427,50 +424,48 @@ const resetPASS = async (req, res) => {
       .lean();
     console.log("Upcoming Deadlines:", upcomingDeadlines);
 
-
     // Get All Workers with their performance
-const workers = await Worker.find().select("_id name").lean();
+    const workers = await Worker.find().select("_id name").lean();
 
-const leaderboardData = await Promise.all(
-  workers.map(async (worker) => {
-    const totalAssignedLeads = await Lead.countDocuments({
-      assignedTo: worker._id,
-      isDeleted: false,
-      ...dateFilter,
-    });
+    const leaderboardData = await Promise.all(
+      workers.map(async (worker) => {
+        const totalAssignedLeads = await Lead.countDocuments({
+          assignedTo: worker._id,
+          isDeleted: false,
+          ...dateFilter,
+        });
 
-    const profitableConversations = await Conversation.countDocuments({
-      addedBy: worker._id,
-      isDeleted: false,
-      isProfitable: true,
-      ...dateFilter,
-    });
+        const profitableConversations = await Conversation.countDocuments({
+          addedBy: worker._id,
+          isDeleted: false,
+          isProfitable: true,
+          ...dateFilter,
+        });
 
-    const convertedPercentage = totalAssignedLeads
-      ? ((profitableConversations / totalAssignedLeads) * 100).toFixed(2)
-      : 0;
+        const convertedPercentage = totalAssignedLeads
+          ? ((profitableConversations / totalAssignedLeads) * 100).toFixed(2)
+          : 0;
 
-    return {
-      workerId: worker._id,
-      name: worker.name,
-      totalAssignedLeads,
-      profitableConversations,
-      convertedPercentage: parseFloat(convertedPercentage),
-    };
-  })
-);
+        return {
+          workerId: worker._id,
+          name: worker.name,
+          totalAssignedLeads,
+          profitableConversations,
+          convertedPercentage: parseFloat(convertedPercentage),
+        };
+      })
+    );
 
-// Sort by converted percentage descending
-const sortedLeaderboard = leaderboardData.sort(
-  (a, b) => b.convertedPercentage - a.convertedPercentage
-);
-
+    // Sort by converted percentage descending
+    const sortedLeaderboard = leaderboardData.sort(
+      (a, b) => b.convertedPercentage - a.convertedPercentage
+    );
 
     // -----------------------
     // BUSINESS INSIGHTS START
     // -----------------------
 
-     // Lead Velocity Rate
+    // Lead Velocity Rate
     const lastWeek = new Date();
     lastWeek.setDate(today.getDate() - 7);
     const weekBeforeLast = new Date();
@@ -479,7 +474,7 @@ const sortedLeaderboard = leaderboardData.sort(
     const leadsLast7Days = await Lead.countDocuments({
       ...filter,
       isDeleted: false,
-      ...dateFilter,  // date fikter
+      ...dateFilter, // date fikter
       createdAt: { $gte: lastWeek },
     });
 
@@ -495,214 +490,221 @@ const sortedLeaderboard = leaderboardData.sort(
       ? "100.00"
       : "0.00";
 
- // Average Lead Response Time
-   const responseTimes = await Lead.aggregate([
-  {
-    $match: {
-      ...filter,
-      isDeleted: false,
-      ...dateFilter,               // date filter
-      lastContact: { $exists: true },
-    },
-  },
-  {
-    $project: {
-      responseTimeInHours: {
-        $divide: [{ $subtract: ["$lastContact", "$createdAt"] }, 1000 * 60 * 60],
+    // Average Lead Response Time
+    const responseTimes = await Lead.aggregate([
+      {
+        $match: {
+          ...filter,
+          isDeleted: false,
+          ...dateFilter, // date filter
+          lastContact: { $exists: true },
+        },
       },
-    },
-  },
-  {
-    $group: {
-      _id: null,
-      avgResponseTime: { $avg: "$responseTimeInHours" },
-    },
-  },
-]);
+      {
+        $project: {
+          responseTimeInHours: {
+            $divide: [
+              { $subtract: ["$lastContact", "$createdAt"] },
+              1000 * 60 * 60,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgResponseTime: { $avg: "$responseTimeInHours" },
+        },
+      },
+    ]);
 
-const averageLeadResponseTime =
-  responseTimes[0]?.avgResponseTime?.toFixed(2) || "0";
+    const averageLeadResponseTime =
+      responseTimes[0]?.avgResponseTime?.toFixed(2) || "0";
 
-
-        // Top Converting Campaign
+    // Top Converting Campaign
     const campaigns = await Campaign.find({ delivered: { $gt: 0 } })
-  .select("title delivered opened")
-  .lean();
+      .select("title delivered opened")
+      .lean();
 
-const campaignPerfo = campaigns.map((camp) => {
-  const openRate = ((camp.opened / camp.delivered) * 100).toFixed(2);
-  return {
-    title: camp.title,
-    delivered: camp.delivered,
-    opened: camp.opened,
-    openRate: parseFloat(openRate),
-  };
-});
+    const campaignPerfo = campaigns.map((camp) => {
+      const openRate = ((camp.opened / camp.delivered) * 100).toFixed(2);
+      return {
+        title: camp.title,
+        delivered: camp.delivered,
+        opened: camp.opened,
+        openRate: parseFloat(openRate),
+      };
+    });
 
-const topConvertingCampaign = campaignPerfo.length
-  ? campaignPerfo.reduce((prev, curr) =>
-      curr.openRate > prev.openRate ? curr : prev
-    )
-  : { title: "N/A", openRate: 0 };
+    const topConvertingCampaign = campaignPerfo.length
+      ? campaignPerfo.reduce((prev, curr) =>
+          curr.openRate > prev.openRate ? curr : prev
+        )
+      : { title: "N/A", openRate: 0 };
 
-
-       // Most Engaged Worker
-    const mostEngagedWorker = sortedLeaderboard.length ? sortedLeaderboard[0] : null;
-
-        // Top Lead Source
-   const topLeadSourceData = await Lead.aggregate([
-  { $match: { ...filter, isDeleted: false,...dateFilter, leadSource: { $exists: true, $ne: "" } } },
-  { $group: { _id: "$leadSource", count: { $sum: 1 } } },
-  { $sort: { count: -1 } },
-  { $limit: 1 },
-]);
-
-const topLeadSource = topLeadSourceData[0]?._id || "N/A";
-
-    
-    // Average Sales Cycle Duration
-    const salesCycleDurations = await Lead.aggregate([
-  {
-    $match: {
-      ...filter,
-      isDeleted: false,
-      lastContact: { $exists: true },
-      ...dateFilter,   // date filter
-    },
-  },
-  {
-    $project: {
-      cycleDurationInDays: {
-        $divide: [{ $subtract: ["$lastContact", "$createdAt"] }, 1000 * 60 * 60 * 24],
-      },
-    },
-  },
-  {
-    $group: {
-      _id: null,
-      avgCycleDuration: { $avg: "$cycleDurationInDays" },
-    },
-  },
-]);
-
-const averageSalesCycleDuration =
-  salesCycleDurations[0]?.avgCycleDuration?.toFixed(2) || "0";
-
-
-        // Highest Performing Category
-    const highestPerformingCategory = leadsByCategory.length
-      ? leadsByCategory.reduce((prev, curr) => (curr.count > prev.count ? curr : prev))
+    // Most Engaged Worker
+    const mostEngagedWorker = sortedLeaderboard.length
+      ? sortedLeaderboard[0]
       : null;
 
-   
+    // Top Lead Source
+    const topLeadSourceData = await Lead.aggregate([
+      {
+        $match: {
+          ...filter,
+          isDeleted: false,
+          ...dateFilter,
+          leadSource: { $exists: true, $ne: "" },
+        },
+      },
+      { $group: { _id: "$leadSource", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 },
+    ]);
 
+    const topLeadSource = topLeadSourceData[0]?._id || "N/A";
 
-     // ---------------------
+    // Average Sales Cycle Duration
+    const salesCycleDurations = await Lead.aggregate([
+      {
+        $match: {
+          ...filter,
+          isDeleted: false,
+          lastContact: { $exists: true },
+          ...dateFilter, // date filter
+        },
+      },
+      {
+        $project: {
+          cycleDurationInDays: {
+            $divide: [
+              { $subtract: ["$lastContact", "$createdAt"] },
+              1000 * 60 * 60 * 24,
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avgCycleDuration: { $avg: "$cycleDurationInDays" },
+        },
+      },
+    ]);
+
+    const averageSalesCycleDuration =
+      salesCycleDurations[0]?.avgCycleDuration?.toFixed(2) || "0";
+
+    // Highest Performing Category
+    const highestPerformingCategory = leadsByCategory.length
+      ? leadsByCategory.reduce((prev, curr) =>
+          curr.count > prev.count ? curr : prev
+        )
+      : null;
+
+    // ---------------------
     // BUSINESS INSIGHTS END
     // ---------------------
 
-
     // lead pipeline
-const pipelineStatuses = ["new", "in-progress", "follow-up", "closed"];
+    const pipelineStatuses = ["new", "in-progress", "follow-up", "closed"];
 
-const leadPipelineCounts = await Lead.aggregate([
-  {
-    $match: {
-      ...filter,
-      isDeleted: false,
-      ...dateFilter,
-      status: { $in: pipelineStatuses },
-    },
-  },
-  {
-    $group: {
-      _id: "$status",
-      count: { $sum: 1 },
-    },
-  },
-]);
-
-// Map the result to always include all statuses with 0 fallback
-const leadPipeline = pipelineStatuses.map((status) => {
-  const found = leadPipelineCounts.find((item) => item._id === status);
-  return { status, count: found ? found.count : 0 };
-});
-
-// Leads generated per day for the past 7 days
-const generateLast7DaysRange = (endDate) => {
-  const result = [];
-
-  const end = new Date(endDate || new Date());
-   end.setUTCDate(end.getUTCDate() - 1);
-  // Normalize to 00:00:00 UTC
-  end.setUTCHours(0, 0, 0, 0);
-
-  const start = new Date(end);
-  start.setUTCDate(end.getUTCDate() - 6);
-
-  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
-    const from = new Date(d);
-    const to = new Date(d);
-    to.setUTCDate(to.getUTCDate() + 1);
-
-    result.push({
-      from,
-      to,
-      formatted: from.toISOString().split("T")[0], // YYYY-MM-DD
-    });
-  }
-
-  return result;
-};
-
-const dailyLeadsLast7Days = await Promise.all(
-  generateLast7DaysRange(end).map(async ({ from, to, formatted }) => {
-    const count = await Lead.countDocuments({
-      ...filter,
-      isDeleted: false,
-      createdAt: {
-        $gte: from,
-        $lt: to,
+    const leadPipelineCounts = await Lead.aggregate([
+      {
+        $match: {
+          ...filter,
+          isDeleted: false,
+          ...dateFilter,
+          status: { $in: pipelineStatuses },
+        },
       },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Map the result to always include all statuses with 0 fallback
+    const leadPipeline = pipelineStatuses.map((status) => {
+      const found = leadPipelineCounts.find((item) => item._id === status);
+      return { status, count: found ? found.count : 0 };
     });
 
-    return {
-      date: formatted,
-      count,
+    // Leads generated per day for the past 7 days
+    const generateLast7DaysRange = (endDate) => {
+      const result = [];
+
+      const end = new Date(endDate || new Date());
+      end.setUTCDate(end.getUTCDate() - 1);
+      // Normalize to 00:00:00 UTC
+      end.setUTCHours(0, 0, 0, 0);
+
+      const start = new Date(end);
+      start.setUTCDate(end.getUTCDate() - 6);
+
+      for (
+        let d = new Date(start);
+        d <= end;
+        d.setUTCDate(d.getUTCDate() + 1)
+      ) {
+        const from = new Date(d);
+        const to = new Date(d);
+        to.setUTCDate(to.getUTCDate() + 1);
+
+        result.push({
+          from,
+          to,
+          formatted: from.toISOString().split("T")[0], // YYYY-MM-DD
+        });
+      }
+
+      return result;
     };
-  })
-);
 
-// Leads by source count
-const leadsBySource = await Lead.aggregate([
-  {
-    $match: {
-      ...filter,
-      isDeleted: false,
-      ...dateFilter,
-      leadSource: { $exists: true, $ne: "" },
-    },
-  },
-  {
-    $group: {
-      _id: "$leadSource",
-      count: { $sum: 1 },
-    },
-  },
-  {
-    $project: {
-      _id: 0,
-      source: "$_id",
-      count: 1,
-    },
-  },
-]);
+    const dailyLeadsLast7Days = await Promise.all(
+      generateLast7DaysRange(end).map(async ({ from, to, formatted }) => {
+        const count = await Lead.countDocuments({
+          ...filter,
+          isDeleted: false,
+          createdAt: {
+            $gte: from,
+            $lt: to,
+          },
+        });
 
+        return {
+          date: formatted,
+          count,
+        };
+      })
+    );
 
-
-
-
-
+    // Leads by source count
+    const leadsBySource = await Lead.aggregate([
+      {
+        $match: {
+          ...filter,
+          isDeleted: false,
+          ...dateFilter,
+          leadSource: { $exists: true, $ne: "" },
+        },
+      },
+      {
+        $group: {
+          _id: "$leadSource",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          source: "$_id",
+          count: 1,
+        },
+      },
+    ]);
 
     res.status(200).json({
       success: true,
@@ -717,7 +719,7 @@ const leadsBySource = await Lead.aggregate([
       campaignPerformance,
       upcomingDeadlines,
       teamLeaderboard: sortedLeaderboard,
-        businessInsights: {
+      businessInsights: {
         leadVelocityRate,
         averageLeadResponseTime,
         topConvertingCampaign,
@@ -738,4 +740,4 @@ const leadsBySource = await Lead.aggregate([
     });
   }
 };
-export { loginManager, sendOTP, verifyOTP, resetPASS , getDashboardData };
+export { loginManager, sendOTP, verifyOTP, resetPASS, getDashboardData };

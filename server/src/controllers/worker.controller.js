@@ -2,6 +2,8 @@ import { Worker } from "../models/worker.models.js";
 import generateOtp from "../utils/generateOtp.js";
 import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
+import Conversation from "../models/conversation.model.js";
+import Lead from "../models/lead.model.js";
 
 const registerWorker = async (req, res) => {
   try {
@@ -336,6 +338,226 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const getDashboardData = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body;
+    const userId = req.user._id;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay()); // Sunday
+
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+
+    const dateFilter =
+      startDate && endDate ? { createdAt: { $gte: start, $lte: end } } : {};
+
+    const baseFilter = {
+      assignedTo: userId,
+      isDeleted: false,
+      ...dateFilter,
+    };
+
+    // 1. Total Assigned Leads
+    const totalAssignedLeads = await Lead.countDocuments(baseFilter);
+
+    // 2. Pending Follow-ups
+    const pendingFollowUps = await Lead.countDocuments({
+      ...baseFilter,
+      followUpDates: { $elemMatch: { $gt: today.toISOString() } },
+    });
+    console.log("Pending Follow-ups:", pendingFollowUps);
+
+    // 3. Follow-ups Today
+    const followUpsTodayData = await Lead.find({
+      ...baseFilter,
+      followUpDates: {
+        $elemMatch: { $gte: today.toISOString(), $lt: tomorrow.toISOString() },
+      },
+    })
+      .select("name followUpDates")
+      .lean();
+    const followUpsTodayCount = followUpsTodayData.length;
+
+    // 4. Missing Follow-ups (past follow-up dates without conversation)
+    const missingFollowUps = await Lead.countDocuments({
+      ...baseFilter,
+      followUpDates: { $elemMatch: { $lt: today.toISOString() } },
+      conversations: { $not: { $elemMatch: { date: { $gte: today } } } },
+    });
+
+    // 5. Performance by Category (profitable / non-profitable per category)
+    const categoryPerformance = await Lead.aggregate([
+      {
+        $match: {
+          assignedTo: userId,
+          isDeleted: false,
+          ...dateFilter,
+        },
+      },
+      {
+        $lookup: {
+          from: "conversations",
+          localField: "_id",
+          foreignField: "leadId",
+          as: "convos",
+        },
+      },
+      {
+        $unwind: "$convos",
+      },
+      {
+        $group: {
+          _id: "$category",
+          profitable: {
+            $sum: {
+              $cond: [{ $eq: ["$convos.isProfitable", true] }, 1, 0],
+            },
+          },
+          nonProfitable: {
+            $sum: {
+              $cond: [{ $eq: ["$convos.isProfitable", false] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      {
+        $unwind: "$categoryInfo",
+      },
+      {
+        $project: {
+          category: "$categoryInfo.title",
+          profitable: 1,
+          nonProfitable: 1,
+        },
+      },
+    ]);
+
+    // 6. Upcoming Schedule
+    const upcomingSchedule = {
+      today: followUpsTodayData.map((lead) => lead.name),
+      tomorrow: (
+        await Lead.find({
+          ...baseFilter,
+          followUpDates: {
+            $elemMatch: {
+              $gte: tomorrow.toISOString(),
+              $lt: new Date(
+                tomorrow.getTime() + 24 * 60 * 60 * 1000
+              ).toISOString(),
+            },
+          },
+        })
+          .select("name")
+          .lean()
+      ).map((lead) => lead.name),
+    };
+
+    // 7. Overdue Follow-ups (past due follow-ups)
+    const overdueFollowUps = await Lead.find({
+      ...baseFilter,
+      followUpDates: { $elemMatch: { $lt: today.toISOString() } },
+    })
+      .sort({ followUpDates: 1 })
+      .lean();
+
+    // 8. Recent Assignments
+    const recentAssignments = await Lead.find({
+      assignedTo: userId,
+      isDeleted: false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    // 9. This Week’s Performance
+    const thisWeekConvos = await Conversation.find({
+      addedBy: userId,
+      isDeleted: false,
+      date: { $gte: thisWeekStart.toISOString(), $lte: today.toISOString() },
+    }).lean();
+
+    const lastWeekConvos = await Conversation.find({
+      addedBy: userId,
+      isDeleted: false,
+      date: {
+        $gte: lastWeekStart.toISOString(),
+        $lt: thisWeekStart.toISOString(),
+      },
+    }).lean();
+
+    const callsMade = thisWeekConvos.filter((c) =>
+      c.conclusion.toLowerCase().includes("call")
+    ).length;
+    const meetingsScheduled = thisWeekConvos.filter((c) =>
+      c.conclusion.toLowerCase().includes("meeting")
+    ).length;
+    const profitableThisWeek = thisWeekConvos.filter(
+      (c) => c.isProfitable
+    ).length;
+    const totalThisWeek = thisWeekConvos.length;
+
+    const conversionRate = totalThisWeek
+      ? ((profitableThisWeek / totalThisWeek) * 100).toFixed(2)
+      : "0.00";
+
+    const improvementFromLastWeek =
+      lastWeekConvos.length > 0
+        ? (
+            ((profitableThisWeek -
+              lastWeekConvos.filter((c) => c.isProfitable).length) /
+              lastWeekConvos.length) *
+            100
+          ).toFixed(2)
+        : "100.00";
+
+    // ✅ Final response
+    res.status(200).json({
+      success: true,
+      totalAssignedLeads,
+      pendingFollowUps,
+      followUpsToday: {
+        count: followUpsTodayCount,
+        data: followUpsTodayData,
+      },
+      missingFollowUps,
+      performanceByCategory: categoryPerformance,
+      upcomingSchedule,
+      overdueFollowUps,
+      recentAssignments,
+      thisWeeksPerformance: {
+        callsMade,
+        meetingsScheduled,
+        conversionRate,
+        improvementFromLastWeek,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching worker dashboard:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 export {
   registerWorker,
   loginWorker,
@@ -343,4 +565,5 @@ export {
   verifyOtp,
   resetPassword,
   getWorkers,
+  getDashboardData,
 };

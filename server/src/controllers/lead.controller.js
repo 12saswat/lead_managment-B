@@ -10,7 +10,6 @@ import mongoose from "mongoose";
 import { sendNotification } from "../utils/sendNotification.js";
 import { Manager } from "../models/manager.model.js";
 import { Worker } from "../models/worker.models.js";
-
 const createLead = async (req, res) => {
   try {
     const {
@@ -270,7 +269,12 @@ const getAllLeads = async (req, res) => {
 
 const getLeads = async (req, res) => {
   try {
-    const leads = await Lead.find({ isDeleted: false }).populate("category");
+    const leads = await Lead.find({ isDeleted: false }).populate("category")
+    .populate({
+        path: "assignedTo",
+        model: "Worker",
+        select: "name _id",
+      });
     if (!leads || leads.length === 0) {
       return res.status(404).json({
         success: false,
@@ -286,6 +290,10 @@ const getLeads = async (req, res) => {
         title: lead.category.title,
         color: lead.category.color,
         description: lead.category.description,
+      },
+      assignedTo: lead.assignedTo && {
+        id: lead.assignedTo._id,
+        name: lead.assignedTo.name,
       },
     }));
 
@@ -708,6 +716,25 @@ const bulkUploadLeads = async (req, res) => {
   try {
     const { category, assignedTo } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Invalid assignedTo ID format",
+        },
+      });
+    }
+    const isWorkerId = await Worker.exists({ _id: assignedTo });
+    const isManagerId = await Manager.exists({ _id: assignedTo });
+
+    if (!isWorkerId && !isManagerId) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: "Assigned user not found in Worker or Manager list",
+        },
+      });
+    }
     if (req.fileValidationError) {
       return res.status(400).json({
         success: false,
@@ -824,9 +851,9 @@ const bulkUploadLeads = async (req, res) => {
       recipient: req.user._id,
       recipientType: req.user.role,
       title: "Conversation Updated",
-      message: `A conversation has been updated (ID: ${updated._id}).`,
+      message: `A lead has been assigned to (ID: ${assignedTo}).`,
       type: "update",
-      relatedTo: updated._id,
+      relatedTo: assignedTo,
       relatedToType: "Conversation",
     };
 
@@ -923,7 +950,6 @@ const addFollowUp = async (req, res) => {
       date: now,
       lead: lead._id,
       conclusion: conclusion,
-      user: req.user._id,
       isProfitable,
       addedBy: req.user._id,
     });
