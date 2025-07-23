@@ -211,6 +211,10 @@ const getAllCampaigns = async (req, res) => {
       .populate({
         path: "sentTo",
         select: "name email phoneNumber isEmailOpened",
+      })
+      .populate({
+        path: "createdBy",
+        select: "name",
       });
 
     const formattedCampaigns = campaigns.map((campaign) => {
@@ -225,6 +229,8 @@ const getAllCampaigns = async (req, res) => {
         type: campaign.type,
         subject: campaign.subject,
         category: campaign.category,
+        status: campaign.status,
+        createdBy: campaign.createdBy?.name,
         totalLeads,
         // openRate: openRate.toFixed(2) + "%",
         createdAt: campaign.createdAt,
@@ -261,7 +267,9 @@ const getCampaignById = async (req, res) => {
       });
     }
 
-    const campaign = await Campaign.findById(id).populate("sentTo");
+    const campaign = await Campaign.findById(id)
+      .populate("sentTo")
+      .populate({ path: "createdBy", select: "name" });
     if (!campaign) {
       return res.status(404).json({
         success: false,
@@ -282,7 +290,8 @@ const getCampaignById = async (req, res) => {
         type: campaign.type,
         subject: campaign.subject,
         catagory: campaign.category,
-        createdBy: campaign.createdBy,
+        status: campaign.status,
+        createdBy: campaign.createdBy?.name,
         createdAt: campaign.createdAt,
         totalLeadsSent: totalSent,
         leads: leads.map((lead) => ({

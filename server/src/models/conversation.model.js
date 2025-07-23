@@ -33,11 +33,6 @@ const conversationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: "Lead"
   },
-  status: {
-    type: String,
-    enum: ["new", "in-progress", "follow-up", "closed"],
-    default: "new",
-  },
 });
 
 
