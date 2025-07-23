@@ -18,7 +18,7 @@ managerRouter.post("/forgot-manager", sendOTP);
 managerRouter.post("/verify/:id", verifyOTP);
 managerRouter.post("/reset/:id", resetPASS);
 
-managerRouter.get("/dashboard", checkAuth,authorizeRoles("manager"), getDashboardData);
+managerRouter.post("/dashboard", checkAuth,authorizeRoles("manager"), getDashboardData);
 
 
 export default managerRouter;

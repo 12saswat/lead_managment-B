@@ -49,3 +49,30 @@ export const userName = async (req, res) => {
   }
 };
 
+export const logout = (req, res) => {
+  const cookies = req.cookies;
+
+  const cookiesOption = {
+    sameSite: "strict",
+    httpOnly: false,
+    secure: process.env.NODE_ENV !== "development",
+    path: "/",
+    domain: process.env.NODE_ENV === "development" ? "localhost" : ".indibus.net",
+  };
+
+  // Clear access token
+  res.clearCookie("token", cookiesOption);
+
+  // Dynamically clear any cookie that starts with "001" (worker) or "002" (manager)
+  Object.keys(cookies).forEach((cookieName) => {
+    if (cookieName.startsWith("001") || cookieName.startsWith("002")) {
+      res.clearCookie(cookieName, cookiesOption);
+    }
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Logged out successfully....!",
+  });
+};
+
