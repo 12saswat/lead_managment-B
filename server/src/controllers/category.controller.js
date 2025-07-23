@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Category from "../models/categories.model.js";
 import Lead from "../models/lead.model.js";
 
@@ -109,8 +110,7 @@ const updateCategory = async (req, res) => {
 // Delete category
 const deleteCategory = async (req, res) => {
   try {
-    const categoryId = await Category.findByIdAndDelete(req.params.id);
-
+    const categoryId = req.params.id;
     const isAssigned = await Lead.findOne({ category: categoryId });
 
     if (isAssigned) {
@@ -125,6 +125,14 @@ const deleteCategory = async (req, res) => {
         success: false,
         message: "Category not found",
       });
+
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category ID",
+      });
+    }
+    await Category.findByIdAndDelete(categoryId);
     res.status(200).json({
       success: true,
       message: "Category deleted successfully",
