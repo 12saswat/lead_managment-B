@@ -269,8 +269,9 @@ const getAllLeads = async (req, res) => {
 
 const getLeads = async (req, res) => {
   try {
-    const leads = await Lead.find({ isDeleted: false }).populate("category")
-    .populate({
+    const leads = await Lead.find({ isDeleted: false })
+      .populate("category")
+      .populate({
         path: "assignedTo",
         model: "Worker",
         select: "name _id",
@@ -451,6 +452,7 @@ const updateLeadById = async (req, res) => {
       priority,
       followUpDates,
       lastContact,
+      documents,
     } = req.body;
 
     if (
@@ -573,7 +575,30 @@ const updateLeadById = async (req, res) => {
       priority,
       followUpDates,
       lastContact,
+      documents: existingLead.documents || [],
     };
+
+    // Upload new documents if any
+    const documentRefs = [];
+
+    if (req.files && Array.isArray(req.files)) {
+      for (const file of req.files) {
+        const result = await uploadOnCloudinary(file.path);
+        if (result?.secure_url) {
+          const doc = await Document.create({
+            url: result.secure_url,
+            size: file.size,
+            description: req.body.description || file.originalname,
+          });
+          documentRefs.push(doc);
+        }
+      }
+    }
+
+    // Replace old documents with new ones
+    if (documentRefs.length > 0) {
+      updateData.documents = documentRefs;
+    }
 
     await Lead.findByIdAndUpdate(leadId, updateData, { new: true });
 
