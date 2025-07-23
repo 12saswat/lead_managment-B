@@ -60,8 +60,8 @@ const endConversation = async (req, res) => {
 
     if (!Array.isArray(lead.conversations)) lead.conversations = [];
     lead.conversations.push(newConversation._id);
-    lead.status = "closed";
     lead.isProfitable = isProfitable;
+    lead.status = "closed";
     lead.lastContact = now;
     if (Array.isArray(lead.followUpDates)) {
       lead.followUpDates = lead.followUpDates.flat().map(String);
