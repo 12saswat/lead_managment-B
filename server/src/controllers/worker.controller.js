@@ -397,58 +397,72 @@ const getDashboardData = async (req, res) => {
 
     // 5. Performance by Category (profitable / non-profitable per category)
     const categoryPerformance = await Lead.aggregate([
-      {
-        $match: {
-          assignedTo: userId,
-          isDeleted: false,
-          ...dateFilter,
-        },
-      },
-      {
-        $lookup: {
-          from: "conversations",
-          localField: "_id",
-          foreignField: "leadId",
-          as: "convos",
-        },
-      },
-      {
-        $unwind: "$convos",
-      },
-      {
-        $group: {
-          _id: "$category",
-          profitable: {
-            $sum: {
-              $cond: [{ $eq: ["$convos.isProfitable", true] }, 1, 0],
-            },
-          },
-          nonProfitable: {
-            $sum: {
-              $cond: [{ $eq: ["$convos.isProfitable", false] }, 1, 0],
-            },
+  {
+    $match: {
+      assignedTo: userId,
+      isDeleted: false,
+      ...dateFilter,
+    },
+  },
+  {
+    $lookup: {
+      from: "conversations",
+      localField: "_id",
+      foreignField: "leadId",
+      as: "convos",
+    },
+  },
+  {
+    $addFields: {
+      profitableCount: {
+        $size: {
+          $filter: {
+            input: "$convos",
+            as: "conv",
+            cond: { $eq: ["$$conv.isProfitable", true] },
           },
         },
       },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "_id",
-          foreignField: "_id",
-          as: "categoryInfo",
+      nonProfitableCount: {
+        $size: {
+          $filter: {
+            input: "$convos",
+            as: "conv",
+            cond: { $eq: ["$$conv.isProfitable", false] },
+          },
         },
       },
-      {
-        $unwind: "$categoryInfo",
-      },
-      {
-        $project: {
-          category: "$categoryInfo.title",
-          profitable: 1,
-          nonProfitable: 1,
-        },
-      },
-    ]);
+    },
+  },
+  {
+    $group: {
+      _id: "$category",
+      totalLeads: { $sum: 1 },
+      profitable: { $sum: "$profitableCount" },
+      nonProfitable: { $sum: "$nonProfitableCount" },
+    },
+  },
+  {
+    $lookup: {
+      from: "categories",
+      localField: "_id",
+      foreignField: "_id",
+      as: "categoryInfo",
+    },
+  },
+  {
+    $unwind: "$categoryInfo",
+  },
+  {
+    $project: {
+      category: "$categoryInfo.title",
+      totalLeads: 1,
+      profitable: 1,
+      nonProfitable: 1,
+    },
+  },
+]);
+
 
     // 6. Upcoming Schedule
     const upcomingSchedule = {
