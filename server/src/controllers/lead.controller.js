@@ -716,6 +716,25 @@ const bulkUploadLeads = async (req, res) => {
   try {
     const { category, assignedTo } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Invalid assignedTo ID format",
+        },
+      });
+    }
+    const isWorkerId = await Worker.exists({ _id: assignedTo });
+    const isManagerId = await Manager.exists({ _id: assignedTo });
+
+    if (!isWorkerId && !isManagerId) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: "Assigned user not found in Worker or Manager list",
+        },
+      });
+    }
     if (req.fileValidationError) {
       return res.status(400).json({
         success: false,
@@ -832,9 +851,9 @@ const bulkUploadLeads = async (req, res) => {
       recipient: req.user._id,
       recipientType: req.user.role,
       title: "Conversation Updated",
-      message: `A conversation has been updated (ID: ${updated._id}).`,
+      message: `A lead has been assigned to (ID: ${assignedTo}).`,
       type: "update",
-      relatedTo: updated._id,
+      relatedTo: assignedTo,
       relatedToType: "Conversation",
     };
 
@@ -931,7 +950,6 @@ const addFollowUp = async (req, res) => {
       date: now,
       lead: lead._id,
       conclusion: conclusion,
-      user: req.user._id,
       isProfitable,
       addedBy: req.user._id,
     });
