@@ -68,48 +68,39 @@ const endConversation = async (req, res) => {
     }
 
     await lead.save();
-    let recipientType = null;
-    const isWorker = await Worker.exists({ _id: lead.assignedTo });
-    if (isWorker) {
-      recipientType = "worker";
-    } else {
-      const isManager = await Manager.exists({ _id: lead.assignedTo });
-      if (isManager) {
-        recipientType = "manager";
-      }
-    }
-
-    if (recipientType) {
-      await sendNotification({
-        recipient: req.user._id,
-        recipientType,
-        sentTo: lead.assignedTo,
-        title: "conversation ended",
-        message: `The lead "${lead.name}" has been closed with a conclusion.`,
-        type: "end-conversation",
-        relatedTo: lead._id,
-        relatedToType: "Lead",
-      });
-    }
     const managers = await Manager.find({}, "_id");
 
     // Prepare base notification payload
     const notificationPayload = {
       recipient: req.user._id,
       recipientType: req.user.role,
-      title: "Conversation Updated",
+      title: "Conversation Ended",
       message: `The lead "${lead.name}" has been closed with a conclusion.`,
       type: "end-conversation",
       relatedTo: lead._id,
       relatedToType: "Conversation",
     };
+     // notification logic
+    if (req.user.role === "worker") {
+      // Notify all managers
+      for (const manager of managers) {
+        await sendNotification({ ...notificationPayload, sentTo: manager._id });
+      }
 
-    // Send to each manager
-    for (const manager of managers) {
-      await sendNotification({
-        ...notificationPayload,
-        sentTo: manager._id,
-      });
+      // Also notify the worker themself if assigned
+      if (lead.assignedTo) {
+        await sendNotification({ ...notificationPayload, sentTo: lead.assignedTo });
+      }
+    } else if (req.user.role === "manager") {
+      // Notify all managers
+      for (const manager of managers) {
+        await sendNotification({ ...notificationPayload, sentTo: manager._id });
+      }
+
+      // Also notify the worker assigned to the lead
+      if (lead.assignedTo) {
+        await sendNotification({ ...notificationPayload, sentTo: lead.assignedTo });
+      }
     }
 
     return res.status(200).json({
@@ -366,12 +357,24 @@ const updateConversation = async (req, res) => {
       relatedToType: "Conversation",
     };
 
-    // Send to each manager
-    for (const manager of managers) {
-      await sendNotification({
-        ...notificationPayload,
-        sentTo: manager._id,
-      });
+     if (req.user.role === "manager") {
+      // Notify all managers
+      for (const manager of managers) {
+        await sendNotification({ ...notificationPayload, sentTo: manager._id });
+      }
+
+      // Also notify the worker (if exists)
+      if (updated.addedBy) {
+        await sendNotification({ ...notificationPayload, sentTo: updated.addedBy });
+      }
+    } else if (req.user.role === "worker") {
+      //notify all managers
+      for (const manager of managers) {
+        await sendNotification({ ...notificationPayload, sentTo: manager._id });
+      }
+      if (updated.addedBy) {
+        await sendNotification({ ...notificationPayload, sentTo: updated.addedBy });
+      }
     }
 
     res.status(200).json({ success: true, data: updated });
@@ -409,12 +412,26 @@ const deleteConversation = async (req, res) => {
       relatedToType: "Conversation",
     };
 
-    // Send to each manager
-    for (const manager of managers) {
-      await sendNotification({
-        ...notificationPayload,
-        sentTo: manager._id,
-      });
+   // notificaton logic
+    if (req.user.role === "manager") {
+      // Notify all managers
+      for (const manager of managers) {
+        await sendNotification({ ...notificationPayload, sentTo: manager._id });
+      }
+
+      // Also notify the worker (if exists)
+      if (convo.addedBy) {
+        await sendNotification({ ...notificationPayload, sentTo: convo.addedBy });
+      }
+    } else if (req.user.role === "worker") {
+      //  notify all managers
+      for (const manager of managers) {
+        await sendNotification({ ...notificationPayload, sentTo: manager._id });
+      }
+      // Also notify the worker (if exists)
+      if (convo.addedBy) {
+        await sendNotification({ ...notificationPayload, sentTo: convo.addedBy });
+      }
     }
     res.status(200).json({ success: true, message: "Conversation deleted" });
   } catch (error) {

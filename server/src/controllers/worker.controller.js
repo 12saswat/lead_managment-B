@@ -4,6 +4,7 @@ import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
 import Conversation from "../models/conversation.model.js";
 import Lead from "../models/lead.model.js";
+import mongoose from "mongoose";
 
 const registerWorker = async (req, res) => {
   try {
@@ -399,53 +400,79 @@ const getDashboardData = async (req, res) => {
     const categoryPerformance = await Lead.aggregate([
       {
         $match: {
-          assignedTo: userId,
+          assignedTo: new mongoose.Types.ObjectId(userId),
+
           isDeleted: false,
-          ...dateFilter,
         },
       },
+
       {
         $lookup: {
           from: "conversations",
+
           localField: "_id",
-          foreignField: "leadId",
-          as: "convos",
+
+          foreignField: "lead",
+
+          as: "conversations",
         },
       },
+
       {
-        $unwind: "$convos",
+        $addFields: {
+          hasConversations: { $gt: [{ $size: "$conversations" }, 0] },
+
+          isLeadProfitable: {
+            $cond: {
+              if: {
+                $gt: [
+                  {
+                    $size: {
+                      $filter: {
+                        input: "$conversations",
+
+                        as: "conv",
+
+                        cond: { $eq: ["$$conv.isProfitable", true] },
+                      },
+                    },
+                  },
+
+                  0,
+                ],
+              },
+
+              then: true,
+
+              else: false,
+            },
+          },
+        },
       },
+
+      {
+        $match: {
+          hasConversations: true, // exclude leads without any conversation
+        },
+      },
+
       {
         $group: {
           _id: "$category",
+
+          totalLeads: { $sum: 1 },
+
           profitable: {
             $sum: {
-              $cond: [{ $eq: ["$convos.isProfitable", true] }, 1, 0],
+              $cond: [{ $eq: ["$isLeadProfitable", true] }, 1, 0],
             },
           },
-          nonProfitable: {
+
+          nonprofitable: {
             $sum: {
-              $cond: [{ $eq: ["$convos.isProfitable", false] }, 1, 0],
+              $cond: [{ $eq: ["$isLeadProfitable", false] }, 1, 0],
             },
           },
-        },
-      },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "_id",
-          foreignField: "_id",
-          as: "categoryInfo",
-        },
-      },
-      {
-        $unwind: "$categoryInfo",
-      },
-      {
-        $project: {
-          category: "$categoryInfo.title",
-          profitable: 1,
-          nonProfitable: 1,
         },
       },
     ]);
