@@ -14,9 +14,9 @@ const bulkUploadLeads = async (req, res) => {
     const { category, assignedTo: onlyManager } = req.body;
 
     const role = req.user.role;
-    const assignedTo = role === "manager" ? onlyManager : null;
+    const assignedTo = role === "manager" ? onlyManager || null : null;
 
-    if (role == "manager") {
+    if (role == "manager" && assignedTo) {
       if (!mongoose.Types.ObjectId.isValid(assignedTo)) {
         return res.status(400).json({
           success: false,
@@ -93,6 +93,7 @@ const bulkUploadLeads = async (req, res) => {
         });
         continue;
       }
+      const status = category && assignedTo ? "in-progress" : "new";
 
       try {
         newLead = await Lead({
@@ -105,7 +106,7 @@ const bulkUploadLeads = async (req, res) => {
           leadSource: row.leadSource || "",
           notes: row.notes || "",
           createdBy: req.user._id,
-          status: row.status || "new",
+          status: status,
           priority: row.priority || "medium",
         });
         newLead.save();
