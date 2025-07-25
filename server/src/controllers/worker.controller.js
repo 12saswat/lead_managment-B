@@ -401,27 +401,20 @@ const getDashboardData = async (req, res) => {
       {
         $match: {
           assignedTo: new mongoose.Types.ObjectId(userId),
-
           isDeleted: false,
         },
       },
-
       {
         $lookup: {
           from: "conversations",
-
           localField: "_id",
-
           foreignField: "lead",
-
           as: "conversations",
         },
       },
-
       {
         $addFields: {
           hasConversations: { $gt: [{ $size: "$conversations" }, 0] },
-
           isLeadProfitable: {
             $cond: {
               if: {
@@ -430,49 +423,60 @@ const getDashboardData = async (req, res) => {
                     $size: {
                       $filter: {
                         input: "$conversations",
-
                         as: "conv",
-
                         cond: { $eq: ["$$conv.isProfitable", true] },
                       },
                     },
                   },
-
                   0,
                 ],
               },
-
               then: true,
-
               else: false,
             },
           },
         },
       },
-
       {
         $match: {
-          hasConversations: true, // exclude leads without any conversation
+          hasConversations: true,
         },
       },
-
       {
         $group: {
           _id: "$category",
-
           totalLeads: { $sum: 1 },
-
           profitable: {
             $sum: {
               $cond: [{ $eq: ["$isLeadProfitable", true] }, 1, 0],
             },
           },
-
           nonprofitable: {
             $sum: {
               $cond: [{ $eq: ["$isLeadProfitable", false] }, 1, 0],
             },
           },
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      {
+        $unwind: "$categoryInfo",
+      },
+      {
+        $project: {
+          _id: 0,
+          categoryId: "$_id",
+          categoryName: "$categoryInfo.title",
+          totalLeads: 1,
+          profitable: 1,
+          nonprofitable: 1,
         },
       },
     ]);
@@ -555,7 +559,7 @@ const getDashboardData = async (req, res) => {
           ).toFixed(2)
         : "100.00";
 
-    // ✅ Final response
+    //  Final response
     res.status(200).json({
       success: true,
       totalAssignedLeads,
