@@ -12,11 +12,11 @@ import {
 
 const campaignrouter = express.Router();
 
-campaignrouter.post("/create", checkAuth, createCampaign);
-campaignrouter.post("/send/:campaignId", checkAuth, sendCampaign);
-campaignrouter.put("/update/:campaignId", checkAuth, updateCampaign);
-campaignrouter.get("/all", checkAuth, getAllCampaigns);
-campaignrouter.get("/:id", checkAuth, getCampaignById);
-campaignrouter.delete("/delete/:id", checkAuth, deleteCampaign);
+campaignrouter.post("/create", checkAuth,authorizeRoles("manager"), createCampaign);
+campaignrouter.post("/send/:campaignId",authorizeRoles("manager"), checkAuth, sendCampaign);
+campaignrouter.put("/update/:campaignId", checkAuth,authorizeRoles("manager"), updateCampaign);
+campaignrouter.get("/all", checkAuth,authorizeRoles("manager"), getAllCampaigns);
+campaignrouter.get("/:id", checkAuth,authorizeRoles("manager"), getCampaignById);
+campaignrouter.delete("/delete/:id", checkAuth,authorizeRoles("manager"), deleteCampaign);
 
 export default campaignrouter;
