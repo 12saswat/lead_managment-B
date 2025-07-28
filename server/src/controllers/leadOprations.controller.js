@@ -110,6 +110,7 @@ const bulkUploadLeads = async (req, res) => {
           priority: row.priority || "medium",
         });
         newLead.save();
+
         successful++;
       } catch (err) {
         console.error("Error creating lead:", err);
@@ -120,6 +121,16 @@ const bulkUploadLeads = async (req, res) => {
         });
       }
     }
+    let categoryDoc = null;
+
+    if (category && mongoose.Types.ObjectId.isValid(category)) {
+      categoryDoc = await Category.findById(category);
+    }
+    if (categoryDoc) {
+      categoryDoc.isActive = true;
+      await categoryDoc.save();
+    }
+
     let recipientType = null;
 
     const isWorker = await Worker.exists({ _id: assignedTo });
