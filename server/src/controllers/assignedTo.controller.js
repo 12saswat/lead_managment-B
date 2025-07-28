@@ -131,6 +131,13 @@ const assignedTo = async (req, res) => {
 
     await assignment.save();
 
+    // Update the category to active if it exists
+    const categoryDoc = await Category.findById(finalCategoryId);
+    if (categoryDoc) {
+      categoryDoc.isActive = true;
+      await categoryDoc.save();
+    }
+
     let recipientType = null;
     const isWorker = await Worker.exists({ _id: assignedTo });
     if (isWorker) {
