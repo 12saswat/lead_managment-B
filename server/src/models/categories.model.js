@@ -10,6 +10,11 @@ const categorySchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  isActive: {
+    type: Boolean,
+    enum: [true, false],
+    default: false,
+  },
   color: {
     type: String,
     default: "#000000", // optional: default color if not provided

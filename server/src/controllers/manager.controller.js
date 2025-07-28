@@ -299,12 +299,13 @@ const getDashboardData = async (req, res) => {
     const recentLeadsCount = recentLeads.length;
 
     // Recent notifications
+    const recipientType = req.user.role;
+
     const recentNotifications = await Notification.find({
-      recipient: userId,
-      recipientType: req.user.role,
+      sentTo: req.user._id,
+      recipientType: recipientType,
     })
       .sort({ createdAt: -1 })
-      .limit(10)
       .lean();
 
     // Leads by category for pie chart
@@ -422,7 +423,6 @@ const getDashboardData = async (req, res) => {
       .sort({ followUpDates: 1 })
       .limit(10)
       .lean();
-    console.log("Upcoming Deadlines:", upcomingDeadlines);
 
     // Get All Workers with their performance
     const workers = await Worker.find().select("_id name").lean();

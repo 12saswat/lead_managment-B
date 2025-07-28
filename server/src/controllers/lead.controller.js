@@ -106,7 +106,13 @@ const createLead = async (req, res) => {
       documents: documentRefs,
       assignedTo: assignedTo || null,
     });
+
+    // to set the isActive true for category is assigned
     await newLead.save();
+    if (categoryDoc) {
+      categoryDoc.isActive = true;
+      await categoryDoc.save();
+    }
     await newLead.populate({
       path: "documents",
       select: "url description size createdAt _id",

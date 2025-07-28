@@ -38,7 +38,7 @@ leadRouter.put(
   checkAuth,
   updateLeadById
 );
-leadRouter.delete("/deletelead/:id", checkAuth, deleteLead);
+leadRouter.delete("/deletelead/:id", checkAuth, authorizeRoles("manager"), deleteLead);
 leadRouter.post("/assign", checkAuth, authorizeRoles("manager"), assignedTo);
 leadRouter.post(
   "/bulk-upload",
