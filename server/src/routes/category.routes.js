@@ -11,9 +11,9 @@ import {
 
 const Categoryrouter = express.Router();
 
-Categoryrouter.post('/create',checkAuth , createCategory);        // Create
-Categoryrouter.get('/',checkAuth , getAllCategories);            // Read all
-Categoryrouter.get("/getcategory/:id",checkAuth , getCategoryById);          // Read one
+Categoryrouter.post('/create',checkAuth ,authorizeRoles("manager"), createCategory);        // Create
+Categoryrouter.get('/',checkAuth ,authorizeRoles("manager"), getAllCategories);            // Read all
+Categoryrouter.get("/getcategory/:id",checkAuth ,authorizeRoles("manager"), getCategoryById);          // Read one
 Categoryrouter.put('/updatecategory/:id',checkAuth ,authorizeRoles("manager"), updateCategory);           // Update
 Categoryrouter.delete('/deletecategory/:id',checkAuth ,authorizeRoles("manager"), deleteCategory);        // Delete
 
