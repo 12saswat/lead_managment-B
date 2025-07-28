@@ -4,6 +4,7 @@ import { generateEncryptedKey, generateRoleToken } from "../utils/RoleToken.js";
 import sendEmail from "../utils/mailer.js";
 import Conversation from "../models/conversation.model.js";
 import Lead from "../models/lead.model.js";
+import mongoose from "mongoose";
 
 const registerWorker = async (req, res) => {
   try {
@@ -397,72 +398,88 @@ const getDashboardData = async (req, res) => {
 
     // 5. Performance by Category (profitable / non-profitable per category)
     const categoryPerformance = await Lead.aggregate([
-  {
-    $match: {
-      assignedTo: userId,
-      isDeleted: false,
-      ...dateFilter,
-    },
-  },
-  {
-    $lookup: {
-      from: "conversations",
-      localField: "_id",
-      foreignField: "leadId",
-      as: "convos",
-    },
-  },
-  {
-    $addFields: {
-      profitableCount: {
-        $size: {
-          $filter: {
-            input: "$convos",
-            as: "conv",
-            cond: { $eq: ["$$conv.isProfitable", true] },
+      {
+        $match: {
+          assignedTo: new mongoose.Types.ObjectId(userId),
+          isDeleted: false,
+        },
+      },
+      {
+        $lookup: {
+          from: "conversations",
+          localField: "_id",
+          foreignField: "lead",
+          as: "conversations",
+        },
+      },
+      {
+        $addFields: {
+          hasConversations: { $gt: [{ $size: "$conversations" }, 0] },
+          isLeadProfitable: {
+            $cond: {
+              if: {
+                $gt: [
+                  {
+                    $size: {
+                      $filter: {
+                        input: "$conversations",
+                        as: "conv",
+                        cond: { $eq: ["$$conv.isProfitable", true] },
+                      },
+                    },
+                  },
+                  0,
+                ],
+              },
+              then: true,
+              else: false,
+            },
           },
         },
       },
-      nonProfitableCount: {
-        $size: {
-          $filter: {
-            input: "$convos",
-            as: "conv",
-            cond: { $eq: ["$$conv.isProfitable", false] },
+      {
+        $match: {
+          hasConversations: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$category",
+          totalLeads: { $sum: 1 },
+          profitable: {
+            $sum: {
+              $cond: [{ $eq: ["$isLeadProfitable", true] }, 1, 0],
+            },
+          },
+          nonprofitable: {
+            $sum: {
+              $cond: [{ $eq: ["$isLeadProfitable", false] }, 1, 0],
+            },
           },
         },
       },
-    },
-  },
-  {
-    $group: {
-      _id: "$category",
-      totalLeads: { $sum: 1 },
-      profitable: { $sum: "$profitableCount" },
-      nonProfitable: { $sum: "$nonProfitableCount" },
-    },
-  },
-  {
-    $lookup: {
-      from: "categories",
-      localField: "_id",
-      foreignField: "_id",
-      as: "categoryInfo",
-    },
-  },
-  {
-    $unwind: "$categoryInfo",
-  },
-  {
-    $project: {
-      category: "$categoryInfo.title",
-      totalLeads: 1,
-      profitable: 1,
-      nonProfitable: 1,
-    },
-  },
-]);
-
+      {
+        $lookup: {
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      {
+        $unwind: "$categoryInfo",
+      },
+      {
+        $project: {
+          _id: 0,
+          categoryId: "$_id",
+          categoryName: "$categoryInfo.title",
+          totalLeads: 1,
+          profitable: 1,
+          nonprofitable: 1,
+        },
+      },
+    ]);
 
     // 6. Upcoming Schedule
     const upcomingSchedule = {
@@ -542,7 +559,7 @@ const getDashboardData = async (req, res) => {
           ).toFixed(2)
         : "100.00";
 
-    // ✅ Final response
+    //  Final response
     res.status(200).json({
       success: true,
       totalAssignedLeads,

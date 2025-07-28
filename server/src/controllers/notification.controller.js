@@ -11,8 +11,6 @@ const getNotifications = async (req, res) => {
       });
     }
 
-    console.log("Fetching notifications for user:", req.user._id);
-    console.log("User role:", req.user.role);
     const recipientType = req.user.role === "manager" ? "manager" : "worker";
 
     const notifications = await Notification.find({
@@ -21,7 +19,7 @@ const getNotifications = async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .lean();
-    console.log("Notifications found:", notifications);
+
     if (notifications?.length === 0) {
       return res.status(200).json({
         success: true,

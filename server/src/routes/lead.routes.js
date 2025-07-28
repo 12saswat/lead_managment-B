@@ -5,8 +5,6 @@ import {
   getLeadById,
   updateLeadById,
   deleteLead,
-  bulkUploadLeads,
-  addFollowUp,
   getLeads,
 } from "../controllers/lead.controller.js";
 import { endConversation } from "../controllers/consversation.controller.js";
@@ -15,6 +13,10 @@ import checkAuth from "../middlewares/checkAuth.middleware.js";
 import authorizeRoles from "../middlewares/authorizeRoles.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { xlUpload } from "../middlewares/xlMulter.middleware.js";
+import {
+  addFollowUp,
+  bulkUploadLeads,
+} from "../controllers/leadOprations.controller.js";
 
 const leadRouter = express.Router();
 
@@ -36,7 +38,7 @@ leadRouter.put(
   checkAuth,
   updateLeadById
 );
-leadRouter.delete("/deletelead/:id", checkAuth, deleteLead);
+leadRouter.delete("/deletelead/:id", checkAuth, authorizeRoles("manager"), deleteLead);
 leadRouter.post("/assign", checkAuth, authorizeRoles("manager"), assignedTo);
 leadRouter.post(
   "/bulk-upload",
