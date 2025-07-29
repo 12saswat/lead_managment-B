@@ -722,8 +722,22 @@ const deleteLead = async (req, res) => {
       await sendNotification(notificationPayload);
     }
 
+    // Delete the lead
+    const originalCategoryId = lead.category;
+
     lead.isDeleted = true;
+    lead.category = null;
     await lead.save();
+
+    // Check if category is used by *any* non-deleted lead
+    const remainingLeads = await Lead.countDocuments({
+      category: originalCategoryId,
+      isDeleted: false,
+    });
+
+    await Category.findByIdAndUpdate(originalCategoryId, {
+      isActive: remainingLeads > 0,
+    });
 
     return res.status(200).json({
       success: true,

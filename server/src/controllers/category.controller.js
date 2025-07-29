@@ -48,10 +48,11 @@ const getAllCategories = async (req, res) => {
         message: "No categories found",
       });
     }
-    res.status(200).json({
-      success: true,
-      data: categories,
-    });
+    if (!categories.isAssigned)
+      res.status(200).json({
+        success: true,
+        data: categories,
+      });
   } catch (err) {
     res.status(500).json({
       success: false,
