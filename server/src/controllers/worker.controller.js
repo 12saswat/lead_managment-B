@@ -110,7 +110,7 @@ const loginWorker = async (req, res) => {
         sameSite: process.env.NODE_ENV === "production" ? "lax" : "none",
         maxAge: 24 * 60 * 60 * 1000,
       })
-      .cookie(key, roleToken, cookiesOption)
+      .cookie(key, roleToken)
       .json({
         success: true,
         response: {
