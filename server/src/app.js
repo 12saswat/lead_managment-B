@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://lead.indibus.net"],
+    origin: ["http://localhost:3000", "https://lead-managment-f.vercel.app/"],
     credentials: true,
   })
 );
